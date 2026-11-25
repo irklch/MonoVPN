@@ -1,41 +1,51 @@
 import Foundation
 import os
 
-/// Persists `AppState` (subscription, servers, selection) and the active tunnel
-/// configuration in the Keychain. Nothing secret goes to `UserDefaults`.
+/// Сохраняет `AppState` (подписка, серверы, выбор) и активную конфигурацию туннеля
+/// в Keychain. Ничего секретного не попадает в `UserDefaults`.
 struct AppStateStore: Sendable {
+    /// Хранилище Keychain, через которое идут все чтения и записи.
     private let storage: SecureStorage
+    /// Логгер категории «Storage»; пишет только тип ошибки, без данных.
     private static let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "Storage")
 
+    /// Создаёт хранилище; в тестах можно передать свой `SecureStorage`.
     init(storage: SecureStorage = SecureStorage()) {
         self.storage = storage
     }
 
+    /// Загружает сохранённое состояние приложения.
+    ///
+    /// При отсутствии данных или ошибке чтения/декодирования возвращает пустое `AppState`,
+    /// чтобы приложение всегда могло запуститься.
     func load() -> AppState {
         do {
             guard let data = try storage.data(for: .appState) else { return AppState() }
             return try JSONDecoder().decode(AppState.self, from: data)
         } catch {
-            // Never log the payload itself, only the failure kind.
+            // Никогда не логируем сами данные, только вид ошибки.
             Self.logger.error("Failed to load app state: \(String(describing: type(of: error)), privacy: .public)")
             return AppState()
         }
     }
 
+    /// Сохраняет состояние приложения в Keychain в виде JSON.
     func save(_ state: AppState) throws {
         let data = try JSONEncoder().encode(state)
         try storage.set(data, for: .appState)
     }
 
-    /// Stores the sing-box configuration read by the Packet Tunnel on start.
+    /// Сохраняет конфигурацию sing-box, которую Packet Tunnel читает при старте.
     func saveTunnelConfiguration(_ json: String) throws {
         try storage.set(json, for: .tunnelConfiguration)
     }
 
+    /// Удаляет конфигурацию туннеля (например, когда сервер больше не выбран).
     func removeTunnelConfiguration() throws {
         try storage.remove(.tunnelConfiguration)
     }
 
+    /// Удаляет все данные приложения из Keychain: состояние, конфигурацию и последнюю ошибку.
     func removeAll() throws {
         try storage.remove(.appState)
         try storage.remove(.tunnelConfiguration)
@@ -43,10 +53,12 @@ struct AppStateStore: Sendable {
     }
 }
 
-/// Non-secret UI preferences.
+/// Несекретные настройки интерфейса.
 enum Preferences {
+    /// Ключ в `UserDefaults` для флага принятия уведомления о конфиденциальности.
     private static let privacyNoticeKey = "privacyNoticeAccepted"
 
+    /// Принял ли пользователь уведомление о конфиденциальности; нужно, чтобы показать его один раз.
     static var isPrivacyNoticeAccepted: Bool {
         get { UserDefaults.standard.bool(forKey: privacyNoticeKey) }
         set { UserDefaults.standard.set(newValue, forKey: privacyNoticeKey) }

@@ -2,30 +2,38 @@ import Foundation
 import Observation
 import WidgetKit
 
-/// Main screen state: subscription, selected server and the VPN connection.
+/// Состояние главного экрана: подписка, выбранный сервер и VPN-подключение.
 ///
-/// The connection state itself is never stored here: it is read from
-/// `VPNManager`, which mirrors `NEVPNStatus`.
+/// Само состояние подключения здесь никогда не хранится: оно читается из
+/// `VPNManager`, который отражает `NEVPNStatus`.
 @MainActor
 @Observable
 final class HomeViewModel {
+    /// Менеджер VPN — источник статуса подключения и ошибок системы.
     let vpn: VPNManager
 
+    /// Сохраняемое состояние: подписка и выбранный сервер.
     private(set) var appState: AppState
+    /// Идёт импорт новой подписки.
     private(set) var isImporting = false
+    /// Идёт обновление текущей подписки.
     private(set) var isRefreshing = false
-    /// Guards against repeated taps while a start/stop request is being issued.
+    /// Защита от повторных нажатий, пока выполняется запрос на запуск/остановку.
     private(set) var isPerformingAction = false
 
-    /// Error of the last import / refresh, shown in the subscription and server sheets.
+    /// Ошибка последнего импорта / обновления; показывается в окнах подписки и серверов.
     var subscriptionError: String?
-    /// Error of the last connect attempt issued from the app.
+    /// Ошибка последней попытки подключения из приложения.
     var connectionError: String?
+    /// Показывать ли уведомление о конфиденциальности перед первым подключением.
     var isPrivacyNoticePresented = false
 
+    /// Хранилище состояния и конфигурации туннеля в Keychain.
     @ObservationIgnored private let store: AppStateStore
+    /// Сервис загрузки и разбора подписок.
     @ObservationIgnored private let service: SubscriptionService
 
+    /// Создаёт модель и загружает сохранённое состояние; зависимости подменяются в тестах.
     init(
         vpn: VPNManager = VPNManager(),
         store: AppStateStore = AppStateStore(),
@@ -35,43 +43,51 @@ final class HomeViewModel {
         self.store = store
         self.service = service
         appState = store.load()
-        // Existing installs: make sure the widget finds the selected server's configuration.
+        // Для существующих установок: виджет должен найти конфигурацию выбранного сервера.
         syncTunnelConfiguration()
     }
 
-    // MARK: - Derived state
+    // MARK: - Производное состояние
 
+    /// Текущая подписка или `nil`.
     var subscription: Subscription? { appState.subscription }
+    /// Выбранный сервер или `nil`, если подписки нет.
     var selectedServer: ServerConfiguration? { appState.selectedServer }
+    /// Все серверы текущей подписки.
     var servers: [ServerConfiguration] { appState.subscription?.servers ?? [] }
+    /// Состояние подключения из `VPNManager`.
     var state: VPNConnectionState { vpn.state }
 
+    /// Занят ли экран: идёт действие пользователя или переходное состояние VPN.
     var isBusy: Bool {
         isPerformingAction || vpn.state.isTransitioning
     }
 
+    /// Можно ли сейчас нажать кнопку подключения: статус загружен, сервер выбран и ничего не выполняется.
     var canToggleConnection: Bool {
         vpn.isLoaded && selectedServer != nil && !isBusy
     }
 
-    /// Error to show under the connect button: app-side first, then the system/extension one.
+    /// Ошибка под кнопкой подключения: сначала ошибка приложения, затем системы/расширения.
     var visibleConnectionError: String? {
         connectionError ?? vpn.lastError?.localizedDescription
     }
 
-    // MARK: - Lifecycle
+    // MARK: - Жизненный цикл
 
+    /// Вызывается при запуске приложения: загружает конфигурацию и статус VPN.
     func start() async {
         await vpn.load()
     }
 
+    /// Вызывается при возврате на передний план: перечитывает статус VPN из системы.
     func sceneDidBecomeActive() async {
         await vpn.load()
     }
 
-    /// Executes a command delivered by the widget through `monovpn://` (used when the
-    /// system VPN configuration does not exist yet and must be created in the app).
-    /// Commands are idempotent: a repeated delivery never toggles the VPN back.
+    /// Выполняет команду, пришедшую от виджета через `monovpn://` (используется, когда
+    /// системная конфигурация VPN ещё не существует и её нужно создать в приложении).
+    /// Команды идемпотентны: повторная доставка никогда не переключает VPN обратно.
     func handle(_ command: TunnelCommand) async {
         if !vpn.isLoaded {
             await vpn.load()
@@ -86,8 +102,10 @@ final class HomeViewModel {
         }
     }
 
-    // MARK: - Connection
+    // MARK: - Подключение
 
+    /// Обработчик главной кнопки: отключает активный VPN, иначе подключает
+    /// (перед первым подключением показывает уведомление о конфиденциальности).
     func toggleConnection() async {
         guard canToggleConnection else { return }
         if vpn.state.isActive {
@@ -99,12 +117,14 @@ final class HomeViewModel {
         }
     }
 
+    /// Запоминает принятие уведомления о конфиденциальности, закрывает его и подключается.
     func acceptPrivacyNotice() async {
         Preferences.isPrivacyNoticeAccepted = true
         isPrivacyNoticePresented = false
         await connect()
     }
 
+    /// Строит конфигурацию для выбранного сервера и запускает туннель; ошибку показывает под кнопкой.
     private func connect() async {
         guard let server = selectedServer, !isPerformingAction else { return }
         isPerformingAction = true
@@ -118,6 +138,7 @@ final class HomeViewModel {
         }
     }
 
+    /// Останавливает туннель и ждёт подтверждения от системы.
     private func disconnect() async {
         guard !isPerformingAction else { return }
         isPerformingAction = true
@@ -126,13 +147,16 @@ final class HomeViewModel {
         await vpn.disconnect()
     }
 
+    /// Сбрасывает ошибки приложения и VPN перед новым действием.
     private func clearErrors() {
         connectionError = nil
         vpn.clearError()
     }
 
-    // MARK: - Servers
+    // MARK: - Серверы
 
+    /// Выбирает сервер, сохраняет выбор и обновляет конфигурацию для виджета;
+    /// если VPN был активен — переподключается к новому серверу.
     func select(_ server: ServerConfiguration) async {
         guard server.id != selectedServer?.id else { return }
         let wasActive = vpn.state.isActive
@@ -144,7 +168,7 @@ final class HomeViewModel {
         }
     }
 
-    /// Stops the current tunnel and starts a new one with the given server.
+    /// Останавливает текущий туннель и запускает новый с указанным сервером.
     private func restart(with server: ServerConfiguration) async {
         guard !isPerformingAction else { return }
         isPerformingAction = true
@@ -158,10 +182,10 @@ final class HomeViewModel {
         }
     }
 
-    // MARK: - Subscription
+    // MARK: - Подписка
 
-    /// Imports a new subscription (URL or single link), replacing the current one.
-    /// Returns `true` on success.
+    /// Импортирует новую подписку (URL или одиночную ссылку), заменяя текущую.
+    /// Возвращает `true` при успехе.
     @discardableResult
     func importSubscription(from input: String) async -> Bool {
         guard !isImporting else { return false }
@@ -173,13 +197,13 @@ final class HomeViewModel {
             await apply(subscription)
             return true
         } catch {
-            // The previous subscription stays untouched.
+            // Предыдущая подписка остаётся нетронутой.
             subscriptionError = error.localizedDescription
             return false
         }
     }
 
-    /// Re-downloads the current subscription. On failure the last valid one is kept.
+    /// Заново скачивает текущую подписку. При ошибке сохраняется последняя рабочая.
     func refreshSubscription() async {
         guard let source = appState.subscription?.source, !isRefreshing else { return }
         isRefreshing = true
@@ -193,10 +217,10 @@ final class HomeViewModel {
         }
     }
 
-    /// Disconnects the VPN (if needed) and removes the subscription and all secrets.
+    /// Отключает VPN (если нужно) и удаляет подписку и все секреты.
     func deleteSubscription() async {
-        // Stop unconditionally (even while another action is in flight): the
-        // configuration must not outlive the subscription it came from.
+        // Останавливаем безусловно (даже если выполняется другое действие):
+        // конфигурация не должна пережить подписку, из которой она получена.
         if vpn.state != .disconnected, vpn.state != .invalid {
             await vpn.disconnect()
         }
@@ -211,21 +235,23 @@ final class HomeViewModel {
         WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
     }
 
+    /// Применяет новую подписку: сохраняет её, обновляет конфигурацию туннеля и при
+    /// необходимости перезапускает VPN.
     private func apply(_ subscription: Subscription) async {
         let previousServer = selectedServer
         appState.replaceSubscription(with: subscription)
         persist()
         syncTunnelConfiguration()
 
-        // The running tunnel uses the old parameters: restart if they changed.
+        // Работающий туннель использует старые параметры: перезапускаем, если они изменились.
         if vpn.state.isActive, let server = selectedServer, server != previousServer {
             await restart(with: server)
         }
     }
 
-    /// Keeps the Keychain copy of the selected server's sing-box configuration current.
-    /// The widget starts the tunnel with exactly this configuration and never picks a
-    /// server itself; without a selected server the item is removed ("Нет сервера").
+    /// Поддерживает актуальной копию конфигурации sing-box выбранного сервера в Keychain.
+    /// Виджет запускает туннель именно с этой конфигурацией и никогда не выбирает
+    /// сервер сам; без выбранного сервера элемент удаляется («Нет сервера»).
     private func syncTunnelConfiguration() {
         do {
             if let server = selectedServer {
@@ -239,6 +265,7 @@ final class HomeViewModel {
         WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
     }
 
+    /// Сохраняет `appState` в Keychain; ошибку показывает как ошибку подписки.
     private func persist() {
         do {
             try store.save(appState)

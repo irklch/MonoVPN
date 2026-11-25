@@ -2,15 +2,18 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
+/// Точка входа расширения виджетов: регистрирует виджеты Mono VPN.
 @main
 struct MonoVPNWidgetBundle: WidgetBundle {
+    /// Набор виджетов расширения — сейчас только виджет подключения.
     var body: some Widget {
         ConnectionWidget()
     }
 }
 
-/// Small Home Screen widget with a single power button.
+/// Маленький виджет домашнего экрана с одной кнопкой питания.
 struct ConnectionWidget: Widget {
+    /// Статическая конфигурация виджета размера small с названием и описанием для галереи.
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: AppIdentifiers.widgetKind, provider: ConnectionProvider()) { entry in
             ConnectionWidgetView(state: entry.state)
@@ -21,19 +24,24 @@ struct ConnectionWidget: Widget {
     }
 }
 
+/// Запись таймлайна виджета.
 struct ConnectionEntry: TimelineEntry {
+    /// Момент, с которого запись показывается.
     let date: Date
+    /// Состояние VPN для отображения.
     let state: WidgetVPNState
 }
 
-/// Reads the real `NEVPNStatus` on every reload. No polling: reloads are requested by
-/// the app, the Packet Tunnel and the App Intent when the status changes; only while
-/// a transition is in progress a single follow-up reload is scheduled.
+/// Читает реальный `NEVPNStatus` при каждой перезагрузке. Без опроса: перезагрузку запрашивают
+/// приложение, Packet Tunnel и App Intent при смене статуса; только во время перехода
+/// планируется одна дополнительная перезагрузка.
 struct ConnectionProvider: TimelineProvider {
+    /// Заглушка, пока виджет загружается: состояние «отключено».
     func placeholder(in _: Context) -> ConnectionEntry {
         ConnectionEntry(date: .now, state: .disconnected)
     }
 
+    /// Снимок для галереи виджетов (статичный) или текущее состояние для домашнего экрана.
     func getSnapshot(in context: Context, completion: @escaping (ConnectionEntry) -> Void) {
         if context.isPreview {
             completion(ConnectionEntry(date: .now, state: .disconnected))
@@ -44,6 +52,7 @@ struct ConnectionProvider: TimelineProvider {
         }
     }
 
+    /// Таймлайн из одной записи; при переходном состоянии — повторная перезагрузка через 5 секунд, иначе никогда.
     func getTimeline(in _: Context, completion: @escaping (Timeline<ConnectionEntry>) -> Void) {
         Task {
             let state = await WidgetCommandRunner.currentState()
@@ -53,25 +62,31 @@ struct ConnectionProvider: TimelineProvider {
     }
 }
 
-/// Connects or disconnects the VPN from the widget, in the widget extension process,
-/// without opening the app. The requested direction is fixed when the widget is
-/// rendered, and `TunnelCommand.action` re-checks the real status, so a double tap
-/// cannot toggle the VPN back.
+/// Подключает или отключает VPN из виджета — в процессе расширения виджета,
+/// не открывая приложение. Направление фиксируется при отрисовке виджета,
+/// а `TunnelCommand.action` перепроверяет реальный статус, поэтому двойное нажатие
+/// не может переключить VPN обратно.
 struct ToggleVPNIntent: AppIntent {
+    /// Название интента (системе нужно, пользователю не показывается).
     static let title: LocalizedStringResource = "widget.intent.title"
+    /// Скрывает интент из Команд и Spotlight — он нужен только виджету.
     static let isDiscoverable = false
 
+    /// `true` — подключить, `false` — отключить.
     @Parameter(title: "widget.intent.connect")
     var connect: Bool
 
+    /// Пустой инициализатор, которого требует `AppIntent`; по умолчанию — подключение.
     init() {
         connect = true
     }
 
+    /// Создаёт интент с заданным направлением.
     init(connect: Bool) {
         self.connect = connect
     }
 
+    /// Выполняет команду и просит виджет перерисоваться с новым статусом.
     func perform() async throws -> some IntentResult {
         await WidgetCommandRunner.perform(connect ? .connect : .disconnect)
         WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
@@ -79,12 +94,17 @@ struct ToggleVPNIntent: AppIntent {
     }
 }
 
+/// Внешний вид виджета: кнопка питания и строка статуса на тёмном фоне.
 struct ConnectionWidgetView: View {
+    /// Отображаемое состояние VPN.
     let state: WidgetVPNState
+    /// Режим отрисовки (полноцветный, тонированный и т. п.) — влияет на цвета кнопки.
     @Environment(\.widgetRenderingMode) private var renderingMode
 
+    /// Тёмный фон виджета (#171717).
     private static let background = Color(red: 0x17 / 255, green: 0x17 / 255, blue: 0x17 / 255)
 
+    /// Кнопка, статус и, для состояния `needsSetup`, URL открытия приложения.
     var body: some View {
         VStack(spacing: 12) {
             control
@@ -99,12 +119,13 @@ struct ConnectionWidgetView: View {
         .containerBackground(for: .widget) {
             Self.background
         }
-        // The system VPN configuration can only be created in the app (it shows a
-        // permission prompt). A small widget supports one URL for the whole widget,
-        // so in this state a tap opens the app with an explicit "connect" command.
+        // Системную конфигурацию VPN можно создать только в приложении (оно показывает
+        // запрос разрешения). Маленький виджет поддерживает один URL на весь виджет,
+        // поэтому в этом состоянии нажатие открывает приложение с явной командой «connect».
         .widgetURL(state == .needsSetup ? TunnelCommand.connect.url : nil)
     }
 
+    /// Кнопка с интентом в интерактивных состояниях; в остальных — просто картинка кнопки.
     @ViewBuilder
     private var control: some View {
         switch state {
@@ -121,6 +142,7 @@ struct ConnectionWidgetView: View {
         }
     }
 
+    /// Круглая кнопка питания: белая при подключении, приглушённая без сервера и во время перехода.
     private var powerButton: some View {
         let isOn = state == .connected
         let isDimmed = state == .noServer || state.isTransitioning
@@ -137,10 +159,12 @@ struct ConnectionWidgetView: View {
         .invalidatableContent()
     }
 
+    /// Виджет отрисовывается в полном цвете (не тонирован системой).
     private var fullColor: Bool {
         renderingMode == .fullColor
     }
 
+    /// Ключ локализации строки статуса.
     private var statusKey: LocalizedStringKey {
         switch state {
         case .noServer: "widget.status.noServer"

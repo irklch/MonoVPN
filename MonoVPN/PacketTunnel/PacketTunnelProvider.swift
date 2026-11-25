@@ -4,24 +4,30 @@ import NetworkExtension
 import os
 import WidgetKit
 
-/// System VPN tunnel backed by the sing-box core (Libbox).
+/// Системный VPN-туннель на ядре sing-box (Libbox).
 ///
-/// The app writes a ready sing-box configuration to the shared Keychain before
-/// starting the tunnel; the extension reads it here. Reading it from the Keychain
-/// (instead of `startVPNTunnel(options:)`) keeps the tunnel restartable by the
-/// system and from Settings, including while the device is locked.
+/// Перед запуском туннеля приложение записывает готовую конфигурацию sing-box в общий
+/// Keychain, а расширение читает её здесь. Чтение из Keychain (вместо
+/// `startVPNTunnel(options:)`) позволяет системе и Настройкам перезапускать туннель,
+/// в том числе когда устройство заблокировано.
 final class PacketTunnelProvider: NEPacketTunnelProvider {
+    /// Логгер категории «PacketTunnel»; пишет только события, без адресов и секретов.
     private static let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "PacketTunnel")
 
+    /// Keychain с конфигурацией туннеля и последней ошибкой запуска.
     private let storage = SecureStorage()
+    /// Командный сервер Libbox, в котором работает сервис sing-box; `nil`, пока ядро не запущено.
     private var commandServer: LibboxCommandServer?
+    /// Мост между sing-box и NetworkExtension; создаётся лениво, потому что ему нужен `self`.
     private lazy var platformInterface = TunnelPlatformInterface(provider: self)
 
+    /// Ставит обработчики сигналов падения Libbox до любой другой работы, чтобы получить отчёт о крэше ядра.
     override init() {
         LibboxPrepareCrashSignalHandlers()
         super.init()
     }
 
+    /// Запускает ядро; при ошибке сохраняет её текст для приложения и виджета, останавливает ядро и пробрасывает ошибку системе.
     override func startTunnel(options _: [String: NSObject]?) async throws {
         try? storage.remove(.lastTunnelError)
         do {
@@ -38,20 +44,23 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
 
+    /// Вызывается системой при остановке туннеля: останавливает ядро и обновляет виджет.
     override func stopTunnel(with reason: NEProviderStopReason) async {
         Self.logger.info("Stopping tunnel, reason \(reason.rawValue, privacy: .public)")
         stopCore()
         reloadWidget()
     }
 
-    /// Lets the Home Screen widget pick up the new status, also when the VPN is
-    /// toggled from Settings or restarted by the system while the app is closed.
+    /// Даёт виджету на домашнем экране подхватить новый статус, в том числе когда VPN
+    /// переключают в Настройках или система перезапускает его при закрытом приложении.
     private func reloadWidget() {
         WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
     }
 
-    // MARK: - Core lifecycle
+    // MARK: - Жизненный цикл ядра
 
+    /// Читает конфигурацию из Keychain, настраивает Libbox (каталоги, версии, OOM-killer)
+    /// и запускает сервис sing-box в командном сервере.
     private func startCore() throws {
         guard let configuration = try storage.string(for: .tunnelConfiguration), !configuration.isEmpty else {
             throw TunnelError.missingConfiguration
@@ -67,7 +76,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         options.crashReportSource = "NetworkExtension"
         options.appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         options.appMarketingVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        // Lets sing-box shed connections before iOS kills the extension at its memory limit.
+        // Позволяет sing-box сбрасывать соединения до того, как iOS убьёт расширение по лимиту памяти.
         options.oomKillerEnabled = true
 
         var setupError: NSError?
@@ -90,6 +99,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
 
+    /// Закрывает сервис и командный сервер и сбрасывает состояние платформенного моста. Безопасно вызывать повторно.
     private func stopCore() {
         if let commandServer {
             try? commandServer.closeService()
@@ -99,17 +109,21 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         platformInterface.reset()
     }
 
-    /// Called by the core when the service asks to stop itself.
+    /// Вызывается ядром, когда сервис просит остановить себя.
     func serviceStopRequested() {
         stopCore()
         cancelTunnelWithError(nil)
     }
 }
 
+/// Ошибки запуска туннеля в расширении.
 enum TunnelError: LocalizedError {
+    /// В Keychain нет конфигурации sing-box (приложение её ещё не сохранило).
     case missingConfiguration
+    /// Ошибка ядра sing-box / Libbox с текстом от ядра.
     case core(String)
 
+    /// Локализованный текст ошибки; показывается в приложении и виджете.
     var errorDescription: String? {
         switch self {
         case .missingConfiguration:
@@ -120,12 +134,16 @@ enum TunnelError: LocalizedError {
     }
 }
 
-/// Directories used by Libbox inside the App Group container.
+/// Каталоги, которые Libbox использует внутри контейнера App Group.
 struct TunnelPaths {
+    /// Базовый каталог данных ядра.
     let base: URL
+    /// Рабочий каталог ядра (кэши правил и т. п.).
     let working: URL
+    /// Каталог временных файлов в Library/Caches.
     let temp: URL
 
+    /// Возвращает пути в контейнере App Group и создаёт каталоги, если их нет.
     static func prepare() throws -> TunnelPaths {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: AppIdentifiers.appGroup

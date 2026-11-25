@@ -1,15 +1,22 @@
 import Foundation
 @preconcurrency import NetworkExtension
 
-/// Connection state mirrored 1:1 from `NEVPNStatus`, the single source of truth.
+/// Состояние подключения, один к одному отражающее `NEVPNStatus` — единственный источник истины.
 enum VPNConnectionState: Equatable, Sendable {
+    /// Конфигурация VPN отсутствует или недействительна.
     case invalid
+    /// Туннель отключён.
     case disconnected
+    /// Туннель подключается.
     case connecting
+    /// Туннель подключён.
     case connected
+    /// Система восстанавливает соединение (например, после смены сети).
     case reasserting
+    /// Туннель отключается.
     case disconnecting
 
+    /// Преобразует системный `NEVPNStatus`; неизвестные значения считаются `.invalid`.
     init(_ status: NEVPNStatus) {
         switch status {
         case .invalid: self = .invalid
@@ -22,7 +29,7 @@ enum VPNConnectionState: Equatable, Sendable {
         }
     }
 
-    /// Tunnel is up or coming up: a new configuration requires a restart.
+    /// Туннель поднят или поднимается: новая конфигурация требует перезапуска.
     var isActive: Bool {
         switch self {
         case .connecting, .connected, .reasserting: true
@@ -30,6 +37,7 @@ enum VPNConnectionState: Equatable, Sendable {
         }
     }
 
+    /// Идёт переходное состояние — интерфейс показывает ожидание и блокирует кнопку.
     var isTransitioning: Bool {
         switch self {
         case .connecting, .reasserting, .disconnecting: true
@@ -38,14 +46,21 @@ enum VPNConnectionState: Equatable, Sendable {
     }
 }
 
+/// Ошибки управления VPN, показываемые пользователю.
 enum VPNError: LocalizedError, Equatable {
+    /// Пользователь не разрешил добавить конфигурацию VPN.
     case permissionDenied
+    /// Не удалось сохранить или загрузить конфигурацию VPN.
     case configurationFailed(String)
+    /// Система не смогла запустить туннель.
     case startFailed(String)
+    /// Ошибка, о которой сообщило само расширение туннеля.
     case tunnel(String)
+    /// Система не подтвердила изменение статуса вовремя.
     case timeout
 
-    // Strings live in the shared "Tunnel" table so the widget can show them too.
+    // Строки лежат в общей таблице "Tunnel", чтобы их мог показать и виджет.
+    /// Локализованный текст ошибки для интерфейса.
     var errorDescription: String? {
         switch self {
         case .permissionDenied:
@@ -62,12 +77,12 @@ enum VPNError: LocalizedError, Equatable {
     }
 }
 
-/// Stateless NetworkExtension operations shared by the app (`VPNManager`) and the
-/// widget's App Intent. Every call works on the manager it is given and re-reads the
-/// status from the system, so it is safe to use from any process of the app.
+/// Операции NetworkExtension без собственного состояния, общие для приложения (`VPNManager`) и
+/// App Intent виджета. Каждый вызов работает с переданным менеджером и перечитывает статус
+/// из системы, поэтому их безопасно вызывать из любого процесса приложения.
 enum TunnelController {
-    /// The VPN configuration created by Mono VPN, or `nil` if it was never installed
-    /// (or was removed in Settings).
+    /// Конфигурация VPN, созданная Mono VPN, или `nil`, если она ни разу не устанавливалась
+    /// (или была удалена в Настройках).
     static func loadManager() async throws -> NETunnelProviderManager? {
         let managers = try await NETunnelProviderManager.loadAllFromPreferences()
         return managers.first { manager in
@@ -75,15 +90,15 @@ enum TunnelController {
         }
     }
 
-    /// Creates or updates the VPN configuration and enables it.
+    /// Создаёт или обновляет конфигурацию VPN и включает её.
     ///
-    /// Creating it shows the system "Add VPN Configuration" alert, so a missing
-    /// configuration must be created from the app, never from the widget.
+    /// При создании система показывает алерт «Добавить конфигурацию VPN», поэтому отсутствующую
+    /// конфигурацию нужно создавать из приложения, а не из виджета.
     static func install(_ existing: NETunnelProviderManager?) async throws -> NETunnelProviderManager {
         let manager = existing ?? NETunnelProviderManager()
         let proto = (manager.protocolConfiguration as? NETunnelProviderProtocol) ?? NETunnelProviderProtocol()
         proto.providerBundleIdentifier = AppIdentifiers.tunnelBundleID
-        // Shown in Settings → VPN. Not a real address: the server lives in the Keychain.
+        // Показывается в Настройки → VPN. Это не настоящий адрес: сервер хранится в Keychain.
         proto.serverAddress = "Mono VPN"
         proto.disconnectOnSleep = false
         manager.protocolConfiguration = proto
@@ -93,8 +108,8 @@ enum TunnelController {
         return manager
     }
 
-    /// Starts the tunnel. If another VPN app took over, re-enables Mono VPN first
-    /// (an existing configuration is updated without a system prompt).
+    /// Запускает туннель. Если управление перехватило другое VPN-приложение, сначала снова
+    /// включает Mono VPN (существующая конфигурация обновляется без системного запроса).
     static func start(_ manager: NETunnelProviderManager) async throws {
         if !manager.isEnabled {
             manager.isEnabled = true
@@ -107,8 +122,8 @@ enum TunnelController {
         }
     }
 
-    /// Stops the tunnel and waits for the system to confirm `.disconnected`.
-    /// Returns `false` if the confirmation did not arrive within `timeout`.
+    /// Останавливает туннель и ждёт, пока система подтвердит `.disconnected`.
+    /// Возвращает `false`, если подтверждение не пришло за `timeout`.
     @discardableResult
     static func stop(_ manager: NETunnelProviderManager, timeout: Duration = .seconds(15)) async -> Bool {
         let connection = manager.connection
@@ -122,15 +137,15 @@ enum TunnelController {
         return status == .disconnected || status == .invalid
     }
 
-    /// Waits (without polling) for `NEVPNStatusDidChange` until `predicate` holds or the
-    /// timeout expires. Returns the last status reported by the system.
+    /// Ждёт (без опроса) уведомлений `NEVPNStatusDidChange`, пока не выполнится `predicate`
+    /// или не истечёт таймаут. Возвращает последний статус, сообщённый системой.
     static func waitForStatus(
         of connection: NEVPNConnection,
         timeout: Duration,
         until predicate: @escaping @Sendable (NEVPNStatus) -> Bool
     ) async -> NEVPNStatus {
         nonisolated(unsafe) let connection = connection
-        // Subscribe before reading the status so a change in between is not missed.
+        // Подписываемся до чтения статуса, чтобы не пропустить изменение между ними.
         let changes = NotificationCenter.default.notifications(named: .NEVPNStatusDidChange, object: connection)
         if predicate(connection.status) { return connection.status }
 
@@ -149,16 +164,20 @@ enum TunnelController {
         return connection.status
     }
 
+    /// Сохраняет менеджер в системные настройки и сразу перечитывает его.
+    ///
+    /// Отказ пользователя в системном алерте превращается в `VPNError.permissionDenied`,
+    /// остальные ошибки — в `VPNError.configurationFailed`.
     private static func save(_ manager: NETunnelProviderManager) async throws {
         do {
             try await manager.saveToPreferences()
-            // Required after saving, otherwise the next start can use a stale configuration.
+            // Обязательно после сохранения, иначе следующий запуск может взять устаревшую конфигурацию.
             try await manager.loadFromPreferences()
         } catch {
             let nsError = error as NSError
             let deniedCodes = [NEVPNError.configurationReadWriteFailed.rawValue, NEVPNError.configurationDisabled.rawValue]
             if nsError.domain == NEVPNErrorDomain, deniedCodes.contains(nsError.code) {
-                // The user tapped "Don't Allow" in the system alert.
+                // Пользователь нажал «Не разрешать» в системном алерте.
                 throw VPNError.permissionDenied
             }
             throw VPNError.configurationFailed(error.localizedDescription)

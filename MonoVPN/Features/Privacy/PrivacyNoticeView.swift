@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// Local privacy notice shown once, before the first connection.
+/// Локальное уведомление о конфиденциальности, показываемое один раз перед первым подключением.
 struct PrivacyNoticeView: View {
+    /// Вызывается, когда пользователь принял уведомление.
     let onAccept: () -> Void
+    /// Закрывает окно по кнопке «Отмена».
     @Environment(\.dismiss) private var dismiss
 
+    /// Заголовок, четыре пункта о том, как приложение обращается с данными, и кнопки принять / отмена.
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeader(title: "privacy.title") {
@@ -36,6 +39,7 @@ struct PrivacyNoticeView: View {
         .interactiveDismissDisabled(false)
     }
 
+    /// Один пункт уведомления: иконка SF Symbols и текст.
     private func item(_ systemName: String, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: systemName)

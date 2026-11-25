@@ -1,27 +1,31 @@
 import Foundation
 
-/// The single active subscription.
+/// Единственная активная подписка.
 struct Subscription: Codable, Hashable, Sendable {
+    /// Откуда взята подписка.
     enum Source: Codable, Hashable, Sendable {
-        /// HTTPS subscription URL. May contain a secret token: never log or show it in full.
+        /// HTTPS-URL подписки. Может содержать секретный токен: никогда не логировать и не показывать целиком.
         case remote(URL)
-        /// A single proxy link (`vless://...`) imported directly.
+        /// Одна прокси-ссылка (`vless://...`), импортированная напрямую.
         case link(String)
     }
 
+    /// Источник подписки.
     var source: Source
+    /// Серверы, полученные при последнем импорте.
     var servers: [ServerConfiguration]
-    /// Entries that were skipped during the last successful import.
+    /// Записи, пропущенные при последнем успешном импорте.
     var issues: [ParseIssue]
-    /// Date of the last successful import or refresh.
+    /// Дата последнего успешного импорта или обновления.
     var lastUpdated: Date
 
+    /// Можно ли обновить подписку: только для подписки по URL.
     var isRefreshable: Bool {
         if case .remote = source { return true }
         return false
     }
 
-    /// Representation safe to display: only the host of the subscription URL.
+    /// Безопасное для показа представление: только хост URL подписки.
     var maskedSource: String {
         switch source {
         case let .remote(url):
@@ -34,20 +38,23 @@ struct Subscription: Codable, Hashable, Sendable {
     }
 }
 
-/// A subscription entry that could not be imported, with a human readable reason.
+/// Запись подписки, которую не удалось импортировать, с понятной человеку причиной.
 struct ParseIssue: Codable, Hashable, Sendable {
-    /// Server name from the link (fragment), if it could be read.
+    /// Имя сервера из ссылки (фрагмент), если его удалось прочитать.
     var name: String?
+    /// Причина, по которой запись пропущена.
     var reason: String
 }
 
-/// Everything the app persists. Stored as one Keychain item because it contains secrets.
+/// Всё, что сохраняет приложение. Хранится одним элементом Keychain, потому что содержит секреты.
 struct AppState: Codable, Equatable, Sendable {
+    /// Текущая подписка; `nil`, пока пользователь её не добавил.
     var subscription: Subscription?
+    /// ID выбранного пользователем сервера.
     var selectedServerID: String?
 
-    /// Replaces the subscription, keeping the user's server if it is still present;
-    /// otherwise the first server becomes selected.
+    /// Заменяет подписку, сохраняя выбранный пользователем сервер, если он всё ещё есть;
+    /// иначе выбранным становится первый сервер.
     mutating func replaceSubscription(with subscription: Subscription) {
         self.subscription = subscription
         if let id = selectedServerID, subscription.servers.contains(where: { $0.id == id }) {
@@ -56,6 +63,7 @@ struct AppState: Codable, Equatable, Sendable {
         selectedServerID = subscription.servers.first?.id
     }
 
+    /// Выбранный сервер; если ID не найден — первый сервер подписки.
     var selectedServer: ServerConfiguration? {
         guard let servers = subscription?.servers else { return nil }
         return servers.first { $0.id == selectedServerID } ?? servers.first

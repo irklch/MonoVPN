@@ -1,15 +1,25 @@
 import Foundation
 
+/// Ошибки импорта и обновления подписки, показываемые пользователю.
 enum SubscriptionError: LocalizedError, Equatable {
+    /// Пользователь ничего не ввёл.
     case emptyInput
+    /// Ввод не похож ни на URL подписки, ни на прокси-ссылку.
     case invalidInput
+    /// URL подписки использует `http://` вместо `https://`.
     case insecureURL
+    /// Сервер подписки ответил кодом вне диапазона 2xx.
     case httpStatus(Int)
+    /// Сетевая ошибка загрузки.
     case network(URLError.Code)
+    /// Тело ответа больше `SubscriptionService.maxBodySize`.
     case tooLarge
+    /// Не удалось разобрать тело подписки.
     case parse(SubscriptionParseError)
+    /// Не удалось разобрать одиночную прокси-ссылку.
     case link(ProxyLinkError)
 
+    /// Локализованный текст ошибки для интерфейса.
     var errorDescription: String? {
         switch self {
         case .emptyInput:
@@ -31,6 +41,7 @@ enum SubscriptionError: LocalizedError, Equatable {
         }
     }
 
+    /// Переводит код `URLError` в понятное сообщение: нет сети, таймаут, хост, TLS или общее.
     private static func describe(_ code: URLError.Code) -> String {
         switch code {
         case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
@@ -48,17 +59,21 @@ enum SubscriptionError: LocalizedError, Equatable {
     }
 }
 
-/// Imports subscriptions: downloads HTTPS subscriptions or parses a single proxy link.
+/// Импортирует подписки: скачивает HTTPS-подписки или разбирает одиночную прокси-ссылку.
 struct SubscriptionService: Sendable {
-    /// Upper bound for a subscription body; real ones are a few KB.
+    /// Верхняя граница размера тела подписки; настоящие подписки весят несколько КБ.
     static let maxBodySize = 5 * 1024 * 1024
 
+    /// Сессия для загрузки подписок.
     private let session: URLSession
 
+    /// Создаёт сервис; в тестах можно передать свою `URLSession`.
     init(session: URLSession = SubscriptionService.makeSession()) {
         self.session = session
     }
 
+    /// Создаёт эфемерную сессию без кэша и cookies, с таймаутами и своим User-Agent,
+    /// чтобы URL подписки и её содержимое не оседали на диске.
     static func makeSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 20
@@ -70,19 +85,20 @@ struct SubscriptionService: Sendable {
         return URLSession(configuration: configuration)
     }
 
+    /// User-Agent вида `MonoVPN/<версия>`; панели подписок по нему отдают список ссылок.
     private static var userAgent: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         return "MonoVPN/\(version)"
     }
 
-    /// Imports user input: an `https://` subscription URL or a single proxy link.
+    /// Импортирует ввод пользователя: URL подписки `https://` или одиночную прокси-ссылку.
     func importSubscription(from input: String) async throws -> Subscription {
         let source = try Self.source(from: input)
         return try await refresh(source)
     }
 
-    /// Downloads (or re-parses) the subscription. Throws without side effects on failure,
-    /// so the caller can keep the last valid configuration.
+    /// Скачивает (или заново разбирает) подписку. При ошибке бросает исключение без побочных
+    /// эффектов, чтобы вызывающий мог сохранить последнюю рабочую конфигурацию.
     func refresh(_ source: Subscription.Source) async throws -> Subscription {
         let result: SubscriptionParseResult
         switch source {
@@ -103,7 +119,7 @@ struct SubscriptionService: Sendable {
         return Subscription(source: source, servers: result.servers, issues: result.issues, lastUpdated: .now)
     }
 
-    /// Validates user input without touching the network.
+    /// Проверяет ввод пользователя, не обращаясь к сети.
     static func source(from input: String) throws -> Subscription.Source {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw SubscriptionError.emptyInput }
@@ -127,6 +143,7 @@ struct SubscriptionService: Sendable {
         }
     }
 
+    /// Скачивает тело подписки, проверяя HTTP-статус и предельный размер.
     private func download(_ url: URL) async throws -> Data {
         var request = URLRequest(url: url)
         request.setValue("*/*", forHTTPHeaderField: "Accept")

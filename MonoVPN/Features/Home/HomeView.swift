@@ -1,10 +1,16 @@
 import SwiftUI
 
+/// Главный экран: статус и счётчик времени, большая кнопка подключения,
+/// карточка выбранного сервера и переходы к подписке и списку серверов.
 struct HomeView: View {
+    /// Модель главного экрана.
     @Bindable var model: HomeViewModel
+    /// Открыто ли окно подписки.
     @State private var isSubscriptionPresented = false
+    /// Открыто ли окно выбора сервера.
     @State private var isServersPresented = false
 
+    /// Вёрстка экрана и модальные окна подписки, серверов и уведомления о конфиденциальности.
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -41,6 +47,7 @@ struct HomeView: View {
         }
     }
 
+    /// Заголовок с названием приложения и кнопкой подписки («+», если подписки нет).
     private var header: some View {
         HStack {
             Text("app.title")
@@ -57,6 +64,7 @@ struct HomeView: View {
         .padding(.top, 12)
     }
 
+    /// Подсказка под кнопкой и, если есть, ошибка подключения.
     @ViewBuilder
     private var caption: some View {
         VStack(spacing: 10) {
@@ -73,6 +81,7 @@ struct HomeView: View {
         .frame(minHeight: 44, alignment: .top)
     }
 
+    /// Ключ локализации подсказки в зависимости от наличия сервера и состояния VPN.
     private var captionKey: LocalizedStringKey {
         if model.selectedServer == nil {
             return "home.caption.noSubscription"
@@ -85,6 +94,7 @@ struct HomeView: View {
         }
     }
 
+    /// Нижняя часть: карточка выбранного сервера или кнопка добавления подписки.
     @ViewBuilder
     private var footer: some View {
         if let server = model.selectedServer {
@@ -102,12 +112,16 @@ struct HomeView: View {
     }
 }
 
-/// Status line and the large duration counter.
+/// Строка статуса и крупный счётчик длительности.
 private struct ConnectionStatusView: View {
+    /// Состояние подключения.
     let state: VPNConnectionState
+    /// Начало сессии; от него считается длительность.
     let connectedDate: Date?
+    /// Выбран ли сервер — влияет на текст для состояния `.invalid`.
     let hasServer: Bool
 
+    /// Точка и текст статуса над счётчиком, который обновляется раз в секунду.
     var body: some View {
         VStack(spacing: 14) {
             HStack(spacing: 8) {
@@ -137,6 +151,7 @@ private struct ConnectionStatusView: View {
         }
     }
 
+    /// Ключ локализации текста статуса.
     private var statusKey: LocalizedStringKey {
         switch state {
         case .invalid: hasServer ? "status.disconnected" : "status.notConfigured"
@@ -149,13 +164,18 @@ private struct ConnectionStatusView: View {
     }
 }
 
-/// Large round black Play / Stop button.
+/// Большая круглая чёрная кнопка Play / Stop.
 private struct ConnectButton: View {
+    /// Состояние подключения — определяет иконку.
     let state: VPNConnectionState
+    /// Идёт действие — вместо иконки показывается индикатор.
     let isBusy: Bool
+    /// Доступна ли кнопка для нажатия.
     let isEnabled: Bool
+    /// Действие по нажатию.
     let action: () -> Void
 
+    /// Круг с иконкой или индикатором, тактильный отклик и подпись для VoiceOver.
     var body: some View {
         Button(action: action) {
             ZStack {
@@ -185,7 +205,9 @@ private struct ConnectButton: View {
     }
 }
 
+/// Стиль кнопки, слегка уменьшающий её при нажатии.
 private struct PressScaleStyle: ButtonStyle {
+    /// Масштабирует метку до 95 % при нажатии с пружинной анимацией.
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
@@ -193,12 +215,16 @@ private struct PressScaleStyle: ButtonStyle {
     }
 }
 
-/// Bottom card with the selected server.
+/// Нижняя карточка с выбранным сервером.
 private struct ServerCard: View {
+    /// Выбранный сервер.
     let server: ServerConfiguration
+    /// Блокирует карточку, пока идёт подключение/отключение.
     let isLocked: Bool
+    /// Действие по нажатию — открыть список серверов.
     let action: () -> Void
 
+    /// Иконка, имя и протокол сервера и стрелка выбора.
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {

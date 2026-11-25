@@ -1,25 +1,42 @@
 import CryptoKit
 import Foundation
 
-/// Errors for a single proxy link. Descriptions are user facing.
+/// Ошибки разбора одной прокси-ссылки. Описания показываются пользователю.
 enum ProxyLinkError: LocalizedError, Equatable {
+    /// Схема ссылки не поддерживается (в значении — сама схема).
     case unsupportedScheme(String)
+    /// Ссылка синтаксически испорчена.
     case malformed
+    /// В ссылке нет адреса сервера.
     case missingHost
+    /// Порт отсутствует или вне диапазона 1...65535.
     case invalidPort
+    /// UUID пользователя некорректен.
     case invalidUUID
+    /// Нет пароля (Trojan / Shadowsocks).
     case missingPassword
+    /// Шифрование VLESS, отличное от `none`.
     case unsupportedEncryption(String)
+    /// Неподдерживаемый режим security (не none / tls / reality).
     case unsupportedSecurity(String)
+    /// Неподдерживаемый транспорт.
     case unsupportedTransport(String)
+    /// Маскировка заголовков TCP (`headerType`), которую sing-box не поддерживает.
     case unsupportedHeaderType(String)
+    /// Неподдерживаемый flow (поддерживается только `xtls-rprx-vision`).
     case unsupportedFlow(String)
+    /// Flow указан без TLS/REALITY или не на TCP.
     case flowRequiresTLS
+    /// Публичный ключ REALITY некорректен.
     case invalidRealityPublicKey
+    /// Short ID REALITY некорректен.
     case invalidRealityShortID
+    /// Шифр Shadowsocks, которого нет в sing-box.
     case unsupportedShadowsocksMethod(String)
+    /// Плагин Shadowsocks (не поддерживается).
     case unsupportedShadowsocksPlugin(String)
 
+    /// Локализованный текст ошибки для интерфейса.
     var errorDescription: String? {
         switch self {
         case let .unsupportedScheme(scheme):
@@ -58,35 +75,38 @@ enum ProxyLinkError: LocalizedError, Equatable {
     }
 }
 
-/// Parses individual proxy links: `vless://`, `vmess://`, `trojan://`, `ss://`.
+/// Разбирает отдельные прокси-ссылки: `vless://`, `vmess://`, `trojan://`, `ss://`.
 ///
-/// Only parameters sing-box can honour are applied. Parameters that change behaviour
-/// but are not supported either fail the link (when ignoring them would connect
-/// differently than the provider intends) or are reported in
+/// Применяются только параметры, которые sing-box может выполнить. Неподдерживаемые
+/// параметры, меняющие поведение, либо делают ссылку ошибочной (когда их игнорирование
+/// привело бы к подключению не так, как задумал провайдер), либо попадают в
 /// `ServerConfiguration.ignoredParameters`.
 enum ProxyLinkParser {
+    /// Схемы ссылок, которые умеет разбирать парсер.
     static let supportedSchemes: Set<String> = ["vless", "vmess", "trojan", "ss"]
 
-    /// uTLS fingerprints accepted by sing-box.
+    /// Отпечатки uTLS, которые принимает sing-box.
     static let supportedFingerprints: Set<String> = [
         "chrome", "firefox", "edge", "safari", "360", "qq", "ios", "android", "random", "randomized",
     ]
 
-    /// Shadowsocks methods implemented by sing-box (AEAD and 2022).
+    /// Методы Shadowsocks, реализованные в sing-box (AEAD и 2022).
     static let supportedShadowsocksMethods: Set<String> = [
         "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305",
         "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
         "chacha20-ietf-poly1305", "xchacha20-ietf-poly1305",
     ]
 
-    /// Query keys that only carry metadata and are safe to skip without a warning.
+    /// Ключи query, несущие только метаданные; их можно пропускать без предупреждения.
     private static let informationalKeys: Set<String> = ["remarks", "remark", "encryption"]
 
+    /// Является ли строка ссылкой одной из поддерживаемых схем.
     static func isProxyLink(_ string: String) -> Bool {
         guard let scheme = scheme(of: string) else { return false }
         return supportedSchemes.contains(scheme)
     }
 
+    /// Разбирает ссылку в проверенную конфигурацию сервера, выбирая парсер по схеме.
     static func parse(_ rawLink: String) throws -> ServerConfiguration {
         let link = rawLink.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let scheme = scheme(of: link) else { throw ProxyLinkError.malformed }
@@ -99,7 +119,7 @@ enum ProxyLinkParser {
         }
     }
 
-    /// Display name stored in the link fragment, if any. Used for error reporting.
+    /// Отображаемое имя из фрагмента ссылки (для VMess — поле `ps`), если есть. Используется в сообщениях об ошибках.
     static func displayName(of rawLink: String) -> String? {
         let link = rawLink.trimmingCharacters(in: .whitespacesAndNewlines)
         if scheme(of: link) == "vmess",
@@ -115,6 +135,7 @@ enum ProxyLinkParser {
 
     // MARK: - VLESS
 
+    /// Разбирает `vless://uuid@host:port?...#name`: UUID, транспорт, TLS/REALITY и flow.
     private static func parseVLESS(_ link: String) throws -> ServerConfiguration {
         let parts = try URLParts(link)
         guard let uuid = parts.user, isValidUUID(uuid) else { throw ProxyLinkError.invalidUUID }
@@ -146,6 +167,7 @@ enum ProxyLinkParser {
 
     // MARK: - Trojan
 
+    /// Разбирает `trojan://password@host:port?...#name`; TLS включён по умолчанию.
     private static func parseTrojan(_ link: String) throws -> ServerConfiguration {
         let parts = try URLParts(link)
         guard let password = parts.user, !password.isEmpty else { throw ProxyLinkError.missingPassword }
@@ -160,7 +182,7 @@ enum ProxyLinkParser {
             password: password
         )
         server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
-        // Trojan is TLS by definition unless explicitly disabled.
+        // Trojan по определению работает через TLS, если это явно не отключено.
         server.tls = try tls(from: &query, defaultSecurity: "tls", ignored: &server.ignoredParameters)
         if let flow = query.removeValue(forKey: "flow"), !flow.isEmpty {
             throw ProxyLinkError.unsupportedFlow(flow)
@@ -169,11 +191,13 @@ enum ProxyLinkParser {
         return server
     }
 
-    // MARK: - VMess (v2rayN base64 JSON)
+    // MARK: - VMess (v2rayN, JSON в Base64)
 
+    /// Разбирает `vmess://base64(JSON)` в формате v2rayN, сводя поля JSON к параметрам как у VLESS.
     private static func parseVMess(_ link: String) throws -> ServerConfiguration {
         guard let json = vmessJSON(link) else { throw ProxyLinkError.malformed }
 
+        /// Читает поле JSON как непустую строку (числа тоже приводятся к строке).
         func string(_ key: String) -> String? {
             if let value = json[key] as? String {
                 let trimmed = value.trimmingCharacters(in: .whitespaces)
@@ -189,7 +213,7 @@ enum ProxyLinkParser {
         }
         guard let uuid = string("id"), isValidUUID(uuid) else { throw ProxyLinkError.invalidUUID }
 
-        // Map the JSON onto the same query vocabulary as VLESS links.
+        // Переносим JSON на тот же словарь параметров query, что и у ссылок VLESS.
         var query: [String: String] = [:]
         query["type"] = string("net") ?? "tcp"
         query["headerType"] = string("type")
@@ -225,6 +249,7 @@ enum ProxyLinkParser {
         return server
     }
 
+    /// Декодирует Base64-JSON из ссылки VMess (без фрагмента); `nil`, если это не JSON-объект.
     private static func vmessJSON(_ link: String) -> [String: Any]? {
         guard let range = link.range(of: "://") else { return nil }
         var payload = String(link[range.upperBound...])
@@ -237,8 +262,11 @@ enum ProxyLinkParser {
         return json
     }
 
-    // MARK: - Shadowsocks (SIP002 and legacy)
+    // MARK: - Shadowsocks (SIP002 и старый формат)
 
+    /// Разбирает `ss://` в формате SIP002 и в старом формате `ss://base64(method:password@host:port)`.
+    ///
+    /// Проверяет, что метод поддерживается sing-box; плагины отклоняются.
     private static func parseShadowsocks(_ link: String) throws -> ServerConfiguration {
         guard let range = link.range(of: "://") else { throw ProxyLinkError.malformed }
         var body = String(link[range.upperBound...])
@@ -249,7 +277,7 @@ enum ProxyLinkParser {
             body = String(body[..<hash])
         }
 
-        // Legacy form: ss://base64(method:password@host:port)
+        // Старый формат: ss://base64(method:password@host:port)
         if !body.contains("@"), let decoded = Base64.decodeString(body.components(separatedBy: "?")[0]) {
             body = decoded
         }
@@ -258,7 +286,7 @@ enum ProxyLinkParser {
         let parts = try URLParts(normalized)
         var query = parts.query
 
-        // userinfo is either base64url(method:password) (SIP002) or plain method:password.
+        // userinfo — это либо base64url(method:password) (SIP002), либо просто method:password.
         guard let rawUser = parts.rawUser, !rawUser.isEmpty else { throw ProxyLinkError.missingPassword }
         let userInfo: String
         if let password = parts.password {
@@ -292,8 +320,12 @@ enum ProxyLinkParser {
         return server
     }
 
-    // MARK: - Shared V2Ray-style parameters
+    // MARK: - Общие параметры в стиле V2Ray
 
+    /// Извлекает из query параметры транспорта (`type`, `host`, `path`, `headerType`, ...) и удаляет их.
+    ///
+    /// Неподдерживаемые, но безвредные параметры дописываются в `ignored`;
+    /// неподдерживаемый транспорт или маскировка заголовков — ошибка.
     private static func transport(from query: inout [String: String], ignored: inout [String]) throws -> TransportSettings {
         let type = (query.removeValue(forKey: "type") ?? "tcp").lowercased()
         let host = query.removeValue(forKey: "host").flatMap { $0.isEmpty ? nil : $0 }
@@ -309,7 +341,7 @@ enum ProxyLinkParser {
         case "ws", "websocket":
             var resolvedPath = path ?? "/"
             var earlyData: Int?
-            // Xray style early data: path "/ws?ed=2048".
+            // Early data в стиле Xray: путь "/ws?ed=2048".
             if let questionMark = resolvedPath.firstIndex(of: "?"),
                let components = URLComponents(string: "http://x/?" + String(resolvedPath[resolvedPath.index(after: questionMark)...])),
                let ed = components.queryItems?.first(where: { $0.name == "ed" })?.value.flatMap(Int.init) {
@@ -334,6 +366,10 @@ enum ProxyLinkParser {
         }
     }
 
+    /// Извлекает из query параметры TLS / REALITY (`security`, `sni`, `alpn`, `fp`, `pbk`, `sid`, ...) и удаляет их.
+    ///
+    /// Возвращает `nil` для соединения без TLS. Попытки отключить проверку сертификата
+    /// и неизвестные отпечатки не применяются, а попадают в `ignored`.
     private static func tls(from query: inout [String: String], defaultSecurity: String, ignored: inout [String]) throws -> TLSSettings? {
         let security = (query.removeValue(forKey: "security") ?? defaultSecurity).lowercased()
         let sni = query.removeValue(forKey: "sni").flatMap { $0.isEmpty ? nil : $0 }
@@ -346,7 +382,7 @@ enum ProxyLinkParser {
         let shortID = query.removeValue(forKey: "sid") ?? ""
         let spiderX = query.removeValue(forKey: "spx")
 
-        // Certificate verification is never disabled: report the parameter instead.
+        // Проверка сертификата никогда не отключается: вместо этого сообщаем о параметре.
         for key in ["allowInsecure", "insecure", "allowinsecure"] {
             if let value = query.removeValue(forKey: key), value == "1" || value.lowercased() == "true" {
                 ignored.append("\(key)=\(value)")
@@ -369,7 +405,7 @@ enum ProxyLinkParser {
             if let spiderX, !spiderX.isEmpty, spiderX != "/" {
                 ignored.append("spx=\(spiderX)")
             }
-            // REALITY in sing-box requires uTLS; chrome matches Xray's default.
+            // REALITY в sing-box требует uTLS; chrome совпадает со значением по умолчанию в Xray.
             return TLSSettings(
                 serverName: sni,
                 alpn: alpn,
@@ -381,6 +417,8 @@ enum ProxyLinkParser {
         }
     }
 
+    /// Оставшиеся (неприменённые) параметры в виде отсортированных строк `key=value`,
+    /// без чисто информационных ключей и пустых значений.
     private static func remainingParameters(_ query: [String: String]) -> [String] {
         query
             .filter { !informationalKeys.contains($0.key) && !$0.value.isEmpty }
@@ -388,48 +426,64 @@ enum ProxyLinkParser {
             .sorted()
     }
 
-    // MARK: - Validation helpers
+    // MARK: - Проверки
 
+    /// Проверяет, что строка — корректный UUID.
     static func isValidUUID(_ value: String) -> Bool {
         UUID(uuidString: value) != nil
     }
 
+    /// Проверяет публичный ключ REALITY: после декодирования Base64 должно быть ровно 32 байта.
     static func isValidRealityPublicKey(_ value: String) -> Bool {
-        // X25519 public key, 32 bytes, base64url without padding (43 chars).
+        // Публичный ключ X25519: 32 байта, base64url без паддинга (43 символа).
         guard let data = Base64.decode(value) else { return false }
         return data.count == 32
     }
 
+    /// Проверяет short ID REALITY: до 16 шестнадцатеричных символов, чётная длина (может быть пустым).
     static func isValidShortID(_ value: String) -> Bool {
         value.count <= 16 && value.count % 2 == 0 && value.allSatisfy(\.isHexDigit)
     }
 
+    /// Стабильный ID сервера: первые 12 байт SHA-256 от ссылки в hex.
+    ///
+    /// Одна и та же ссылка всегда даёт один ID, поэтому выбор сервера переживает обновление подписки.
     static func stableID(for link: String) -> String {
         let digest = SHA256.hash(data: Data(link.trimmingCharacters(in: .whitespacesAndNewlines).utf8))
         return digest.prefix(12).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// Схема ссылки (часть до `://`) в нижнем регистре; `nil`, если её нет.
     private static func scheme(of link: String) -> String? {
         guard let range = link.range(of: "://") else { return nil }
         let scheme = link[..<range.lowerBound].lowercased()
         return scheme.isEmpty ? nil : scheme
     }
 
+    /// Убирает квадратные скобки вокруг IPv6-адреса.
     private static func stripBrackets(_ host: String) -> String {
         host.hasPrefix("[") && host.hasSuffix("]") ? String(host.dropFirst().dropLast()) : host
     }
 }
 
-/// `scheme://user[:password]@host:port?query#name`, parsed leniently.
+/// `scheme://user[:password]@host:port?query#name`, разобранная нестрого.
 private struct URLParts {
+    /// Пользовательская часть как есть (с percent-encoding); нужна для Base64 в Shadowsocks.
     let rawUser: String?
+    /// Пользовательская часть после декодирования (UUID или пароль).
     let user: String?
+    /// Пароль после `:` в userinfo, если есть.
     let password: String?
+    /// Хост без квадратных скобок IPv6.
     let host: String
+    /// Порт в диапазоне 1...65535.
     let port: Int
+    /// Параметры query; при повторах берётся первое значение.
     let query: [String: String]
+    /// Имя сервера из фрагмента; `nil`, если фрагмент пуст.
     let name: String?
 
+    /// Разбирает ссылку; бросает ошибку, если нет хоста или порт некорректен.
     init(_ link: String) throws {
         guard let components = URLComponents(string: link) else { throw ProxyLinkError.malformed }
         guard var host = components.percentEncodedHost, !host.isEmpty else { throw ProxyLinkError.missingHost }
@@ -445,7 +499,7 @@ private struct URLParts {
 
         var query: [String: String] = [:]
         for item in components.queryItems ?? [] {
-            // First occurrence wins; values are already percent-decoded by URLComponents.
+            // Побеждает первое вхождение; значения уже декодированы URLComponents.
             if query[item.name] == nil {
                 query[item.name] = item.value ?? ""
             }
@@ -457,9 +511,10 @@ private struct URLParts {
     }
 }
 
-/// Lenient Base64 decoding used by subscriptions and links: accepts standard and
-/// URL-safe alphabets, missing padding and embedded whitespace.
+/// Нестрогое декодирование Base64 для подписок и ссылок: принимает стандартный и
+/// URL-safe алфавиты, отсутствующий паддинг и пробелы внутри.
 enum Base64 {
+    /// Декодирует строку в байты; `nil`, если это не Base64.
     static func decode(_ string: String) -> Data? {
         var normalized = string
             .filter { !$0.isWhitespace }
@@ -474,6 +529,7 @@ enum Base64 {
         return Data(base64Encoded: normalized)
     }
 
+    /// Декодирует строку Base64 в текст UTF-8.
     static func decodeString(_ string: String) -> String? {
         decode(string).flatMap { String(data: $0, encoding: .utf8) }
     }

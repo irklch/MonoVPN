@@ -1,12 +1,19 @@
 import SwiftUI
 
+/// Окно подписки: добавление или замена, обновление и удаление подписки.
 struct SubscriptionView: View {
+    /// Модель главного экрана, через которую идут все действия с подпиской.
     let model: HomeViewModel
+    /// Закрывает окно после сохранения или удаления.
     @Environment(\.dismiss) private var dismiss
+    /// Текст в поле ввода: URL подписки или прокси-ссылка.
     @State private var input = ""
+    /// Показан ли диалог подтверждения удаления.
     @State private var isDeleteConfirmationPresented = false
+    /// Фокус поля ввода; снимается перед сохранением, чтобы скрыть клавиатуру.
     @FocusState private var isFieldFocused: Bool
 
+    /// Карточка текущей подписки, поле ввода, ошибка, кнопки и список пропущенных записей.
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -97,6 +104,7 @@ struct SubscriptionView: View {
         }
     }
 
+    /// Поле ввода URL или ссылки с кнопкой вставки из буфера обмена и подсказкой.
     private var inputSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(model.subscription == nil ? "subscription.input.label.new" : "subscription.input.label.replace")
@@ -136,6 +144,7 @@ struct SubscriptionView: View {
         }
     }
 
+    /// Импортирует введённую подписку; при успехе очищает поле и закрывает окно.
     private func save() async {
         isFieldFocused = false
         if await model.importSubscription(from: input) {
@@ -145,10 +154,12 @@ struct SubscriptionView: View {
     }
 }
 
-/// Current subscription summary. The URL itself is never shown: it may contain a token.
+/// Краткие сведения о текущей подписке. Сам URL никогда не показывается: в нём может быть токен.
 private struct CurrentSubscriptionCard: View {
+    /// Текущая подписка.
     let subscription: Subscription
 
+    /// Замаскированный источник, количество серверов и дата последнего обновления.
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {

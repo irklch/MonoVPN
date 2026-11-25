@@ -1,9 +1,13 @@
 import SwiftUI
 
+/// Окно выбора сервера из текущей подписки.
 struct ServersView: View {
+    /// Модель главного экрана: список серверов, выбор и обновление подписки.
     let model: HomeViewModel
+    /// Закрывает окно после выбора сервера.
     @Environment(\.dismiss) private var dismiss
 
+    /// Заголовок с кнопкой обновления, ошибка и список серверов или пустое состояние.
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeader(title: "servers.title") {
@@ -38,6 +42,7 @@ struct ServersView: View {
         .presentationCornerRadius(28)
     }
 
+    /// Прокручиваемый список серверов с разделителями и пропущенными записями в конце.
     private var list: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -63,6 +68,7 @@ struct ServersView: View {
         }
     }
 
+    /// Пустое состояние, когда в подписке нет серверов.
     private var emptyState: some View {
         VStack(spacing: 12) {
             Spacer()
@@ -83,11 +89,16 @@ struct ServersView: View {
     }
 }
 
+/// Строка списка серверов: имя, протокол, проигнорированные параметры и отметка выбора.
 private struct ServerRow: View {
+    /// Сервер этой строки.
     let server: ServerConfiguration
+    /// Выбран ли сервер сейчас.
     let isSelected: Bool
+    /// Действие по нажатию — выбрать сервер.
     let action: () -> Void
 
+    /// Кнопка на всю ширину строки с текстом сервера и галочкой у выбранного.
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
@@ -122,10 +133,12 @@ private struct ServerRow: View {
     }
 }
 
-/// Lists subscription entries that were not imported, so nothing is dropped silently.
+/// Перечисляет записи подписки, которые не были импортированы, чтобы ничего не терялось молча.
 struct SkippedServersNote: View {
+    /// Пропущенные записи с причинами.
     let issues: [ParseIssue]
 
+    /// Заголовок с количеством и до 10 записей вида «имя: причина».
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("servers.skipped \(issues.count)")

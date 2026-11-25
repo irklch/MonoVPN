@@ -1,41 +1,50 @@
 import Foundation
 import NetworkExtension
 
-/// A connect / disconnect request coming from the widget, either through its
-/// App Intent or through the `monovpn://` URL that opens the app.
+/// Запрос на подключение / отключение от виджета — через его App Intent
+/// или через URL `monovpn://`, который открывает приложение.
 ///
-/// Commands are idempotent ("connect" never stops a running tunnel), so a repeated
-/// tap or a command delivered twice can never toggle the VPN back.
+/// Команды идемпотентны («connect» никогда не останавливает работающий туннель), поэтому
+/// повторное нажатие или дважды доставленная команда не могут переключить VPN обратно.
 enum TunnelCommand: String, Sendable, Equatable {
+    /// Подключить VPN.
     case connect
+    /// Отключить VPN.
     case disconnect
 
+    /// Схема URL, по которой виджет открывает приложение с командой.
     static let urlScheme = "monovpn"
 
+    /// Разбирает команду из URL вида `monovpn://connect`; `nil` для чужих или неизвестных URL.
     init?(url: URL) {
         guard url.scheme?.lowercased() == Self.urlScheme, let host = url.host()?.lowercased() else { return nil }
         self.init(rawValue: host)
     }
 
+    /// URL этой команды для ссылки из виджета.
     var url: URL {
-        // Static string built from a known scheme and case name: always valid.
+        // Статическая строка из известной схемы и имени case: всегда корректна.
         URL(string: "\(Self.urlScheme)://\(rawValue)") ?? URL(fileURLWithPath: "/")
     }
 
+    /// Действие, которое нужно выполнить с туннелем.
     enum Action: Equatable {
+        /// Запустить туннель.
         case start
+        /// Остановить туннель.
         case stop
+        /// Ничего не делать: состояние уже соответствует команде.
         case none
     }
 
-    /// What to do for this command given the real system status.
+    /// Что делать по этой команде с учётом реального системного статуса.
     func action(status: NEVPNStatus, hasConfiguration: Bool) -> Action {
         switch self {
         case .connect:
             guard hasConfiguration else { return .none }
             switch status {
             case .disconnected, .invalid: return .start
-            default: return .none // already starting/running, or still stopping
+            default: return .none // уже запускается/работает или ещё останавливается
             }
         case .disconnect:
             switch status {
@@ -46,20 +55,28 @@ enum TunnelCommand: String, Sendable, Equatable {
     }
 }
 
-/// What the widget shows. Derived from `NEVPNStatus` every time, never stored.
+/// Что показывает виджет. Каждый раз выводится из `NEVPNStatus`, никогда не хранится.
 enum WidgetVPNState: Equatable, Sendable {
-    /// No subscription or no selected server: nothing to connect to.
+    /// Нет подписки или не выбран сервер: подключаться не к чему.
     case noServer
-    /// A server is selected but the system VPN configuration is not installed yet
-    /// (first connection must happen in the app, which shows the system prompt).
+    /// Сервер выбран, но системная конфигурация VPN ещё не установлена
+    /// (первое подключение должно пройти в приложении, которое покажет системный запрос).
     case needsSetup
+    /// VPN отключён.
     case disconnected
+    /// VPN подключается.
     case connecting
+    /// VPN подключён.
     case connected
+    /// VPN отключается.
     case disconnecting
-    /// The last start failed (reported by the tunnel or the widget).
+    /// Последний запуск не удался (сообщил туннель или виджет).
     case failed
 
+    /// Вычисляет состояние виджета из системного статуса, наличия конфигурации и последней ошибки.
+    ///
+    /// Переходные и подключённое состояния берутся из статуса в первую очередь,
+    /// остальное зависит от того, есть ли сервер и установлена ли конфигурация.
     static func resolve(status: NEVPNStatus?, hasConfiguration: Bool, lastError: String?) -> WidgetVPNState {
         switch status {
         case .connecting?, .reasserting?: return .connecting
@@ -73,7 +90,7 @@ enum WidgetVPNState: Equatable, Sendable {
         return .disconnected
     }
 
-    /// Command issued by a tap, or `nil` if the widget is not interactive in this state.
+    /// Команда, которую отправляет нажатие, или `nil`, если в этом состоянии виджет не интерактивен.
     var command: TunnelCommand? {
         switch self {
         case .needsSetup, .disconnected, .failed: .connect
@@ -82,15 +99,16 @@ enum WidgetVPNState: Equatable, Sendable {
         }
     }
 
+    /// Идёт подключение или отключение — виджет показывает индикатор ожидания.
     var isTransitioning: Bool {
         self == .connecting || self == .disconnecting
     }
 }
 
-/// Executes widget commands with the shared `TunnelController`. Runs in whichever
-/// process performs the App Intent (the widget extension) — no app UI involved.
+/// Выполняет команды виджета через общий `TunnelController`. Работает в том процессе,
+/// который выполняет App Intent (расширение виджета), — без интерфейса приложения.
 enum WidgetCommandRunner {
-    /// Reads the current state for the widget timeline.
+    /// Читает текущее состояние для таймлайна виджета.
     static func currentState(storage: SecureStorage = SecureStorage()) async -> WidgetVPNState {
         let hasConfiguration = (try? storage.data(for: .tunnelConfiguration)) != nil
         let lastError = try? storage.string(for: .lastTunnelError)
@@ -98,8 +116,8 @@ enum WidgetCommandRunner {
         return .resolve(status: manager?.connection.status, hasConfiguration: hasConfiguration, lastError: lastError)
     }
 
-    /// Performs the command and waits (bounded) for the system to confirm the result.
-    /// Errors are stored for the widget to display instead of pretending success.
+    /// Выполняет команду и ждёт (ограниченное время), пока система подтвердит результат.
+    /// Ошибки сохраняются, чтобы виджет их показал, а не делал вид, что всё удалось.
     static func perform(_ command: TunnelCommand, storage: SecureStorage = SecureStorage()) async {
         let hasConfiguration = (try? storage.data(for: .tunnelConfiguration)) != nil
         guard let manager = try? await TunnelController.loadManager() else { return }

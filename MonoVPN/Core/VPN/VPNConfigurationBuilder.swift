@@ -1,32 +1,41 @@
 import Foundation
 
-/// Builds the sing-box (v1.14) JSON configuration for one server.
+/// Строит JSON-конфигурацию sing-box (v1.14) для одного сервера.
 ///
-/// Routing model:
-/// - TUN inbound with IPv4 **and** IPv6 addresses and `auto_route`, so the Packet
-///   Tunnel claims both default routes. IPv6 traffic is never left outside the
-///   tunnel, even when the VPN server itself has no IPv6.
-/// - All DNS queries sent to the tunnel are hijacked and resolved over DNS-over-HTTPS
-///   through the proxy; the system resolver is used only to resolve the VPN server's
-///   own hostname (`default_domain_resolver`).
-/// - Private (LAN) addresses go direct, everything else goes through the proxy.
+/// Модель маршрутизации:
+/// - Вход TUN с адресами IPv4 **и** IPv6 и `auto_route`, поэтому Packet Tunnel
+///   забирает оба маршрута по умолчанию. Трафик IPv6 никогда не идёт мимо
+///   туннеля, даже если у самого VPN-сервера нет IPv6.
+/// - Все DNS-запросы, попавшие в туннель, перехватываются и разрешаются через DNS-over-HTTPS
+///   поверх прокси; системный резолвер используется только для разрешения имени
+///   самого VPN-сервера (`default_domain_resolver`).
+/// - Частные (LAN) адреса идут напрямую, всё остальное — через прокси.
 enum VPNConfigurationBuilder {
+    /// Теги объектов конфигурации, по которым они ссылаются друг на друга.
     enum Tag {
+        /// Исходящее соединение через прокси-сервер.
         static let proxy = "proxy"
+        /// Прямое исходящее соединение (для LAN).
         static let direct = "direct"
+        /// Входящий TUN-интерфейс.
         static let tun = "tun-in"
+        /// Удалённый DNS (DoH через прокси).
         static let remoteDNS = "dns-remote"
+        /// Локальный системный DNS (только для имени VPN-сервера).
         static let localDNS = "dns-local"
     }
 
-    /// Remote DNS used inside the tunnel (DoH over the proxy).
+    /// Удалённый DNS внутри туннеля (DoH через прокси).
     static let remoteDNSServer = "1.1.1.1"
 
+    /// Возвращает полную конфигурацию sing-box для сервера в виде JSON-строки.
+    ///
+    /// Бросает ошибку, если у сервера нет обязательных полей для его протокола.
     static func build(for server: ServerConfiguration) throws -> String {
         let config: [String: Any] = [
             "log": [
-                // Warnings only: sing-box never logs credentials, and keeping the level
-                // low avoids recording visited domains.
+                // Только предупреждения: sing-box никогда не логирует учётные данные, а низкий
+                // уровень не даёт записывать посещённые домены.
                 "level": "warn",
             ],
             "dns": [
@@ -78,6 +87,9 @@ enum VPNConfigurationBuilder {
         return json
     }
 
+    /// Собирает объект outbound (исходящее соединение через прокси) для протокола сервера.
+    ///
+    /// Бросает `ProxyLinkError.malformed`, если не хватает UUID, пароля или шифра.
     static func outbound(for server: ServerConfiguration) throws -> [String: Any] {
         var outbound: [String: Any] = [
             "tag": Tag.proxy,
@@ -117,6 +129,7 @@ enum VPNConfigurationBuilder {
         return outbound
     }
 
+    /// Преобразует настройки TLS (SNI, ALPN, uTLS, REALITY) в объект `tls` sing-box.
     private static func tlsObject(_ tls: TLSSettings) -> [String: Any] {
         var object: [String: Any] = ["enabled": true]
         if let serverName = tls.serverName {
@@ -138,6 +151,7 @@ enum VPNConfigurationBuilder {
         return object
     }
 
+    /// Преобразует транспорт в объект `transport` sing-box; для TCP возвращает `nil` (транспорт не нужен).
     private static func transportObject(_ transport: TransportSettings) -> [String: Any]? {
         switch transport {
         case .tcp:
@@ -169,6 +183,7 @@ enum VPNConfigurationBuilder {
         }
     }
 
+    /// Возвращает непустое значение или бросает `ProxyLinkError.malformed`.
     private static func required(_ value: String?) throws -> String {
         guard let value, !value.isEmpty else { throw ProxyLinkError.malformed }
         return value

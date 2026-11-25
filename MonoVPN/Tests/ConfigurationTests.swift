@@ -2,12 +2,15 @@ import Foundation
 @testable import MonoVPN
 import Testing
 
+/// Тесты построения конфигурации sing-box из разобранных серверов.
 struct VPNConfigurationBuilderTests {
+    /// Декодирует JSON-конфигурацию в словарь для проверок.
     private func decode(_ json: String) throws -> [String: Any] {
         let object = try JSONSerialization.jsonObject(with: Data(json.utf8))
         return try #require(object as? [String: Any])
     }
 
+    /// VLESS + REALITY: outbound, TLS/uTLS/REALITY и защита от утечек (IPv6 в TUN, перехват DNS).
     @Test func vlessRealityConfiguration() throws {
         let server = try ProxyLinkParser.parse(Fixture.vlessReality)
         let config = try decode(VPNConfigurationBuilder.build(for: server))
@@ -30,7 +33,7 @@ struct VPNConfigurationBuilderTests {
         #expect(reality["public_key"] as? String == Fixture.realityKey)
         #expect(reality["short_id"] as? String == "6ba85179e30d4fc2")
 
-        // Leak protection: IPv4 + IPv6 TUN with auto route, DNS hijacked.
+        // Защита от утечек: TUN с IPv4 + IPv6 и auto route, DNS перехватывается.
         let inbounds = try #require(config["inbounds"] as? [[String: Any]])
         let tun = try #require(inbounds.first)
         #expect(tun["type"] as? String == "tun")
@@ -44,6 +47,7 @@ struct VPNConfigurationBuilderTests {
         #expect(rules.contains { $0["action"] as? String == "hijack-dns" })
     }
 
+    /// WebSocket-транспорт: путь без `?ed=`, early data и заголовок Host.
     @Test func webSocketTransport() throws {
         let server = try ProxyLinkParser.parse(Fixture.vlessWebSocketTLS)
         let proxy = try VPNConfigurationBuilder.outbound(for: server)
@@ -54,6 +58,7 @@ struct VPNConfigurationBuilderTests {
         #expect((transport["headers"] as? [String: String])?["Host"] == "cdn.example.org")
     }
 
+    /// Shadowsocks: тип, метод и отсутствие TLS.
     @Test func shadowsocksConfiguration() throws {
         let server = try ProxyLinkParser.parse(Fixture.shadowsocks)
         let proxy = try VPNConfigurationBuilder.outbound(for: server)
@@ -63,14 +68,16 @@ struct VPNConfigurationBuilderTests {
     }
 }
 
+/// Тесты форматирования длительности подключения.
 struct ConnectionDurationFormatterTests {
+    /// Форматирование от даты начала: ноль без даты, отбрасывание долей секунды, больше 24 часов, отрицательные значения.
     @Test func formatsFromStartDate() {
         let start = Date(timeIntervalSince1970: 1_000)
         #expect(ConnectionDurationFormatter.string(from: nil, to: start) == "00:00:00")
         #expect(ConnectionDurationFormatter.string(from: start, to: start.addingTimeInterval(59.9)) == "00:00:59")
         #expect(ConnectionDurationFormatter.string(from: start, to: start.addingTimeInterval(3_725)) == "01:02:05")
         #expect(ConnectionDurationFormatter.string(from: start, to: start.addingTimeInterval(90_000)) == "25:00:00")
-        // Clock skew must not produce negative values.
+        // Расхождение часов не должно давать отрицательных значений.
         #expect(ConnectionDurationFormatter.string(from: start, to: start.addingTimeInterval(-5)) == "00:00:00")
     }
 }

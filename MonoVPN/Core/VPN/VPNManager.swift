@@ -4,31 +4,39 @@ import Observation
 import os
 import WidgetKit
 
-/// Owns the app's `NETunnelProviderManager` and publishes the system VPN status.
+/// Владеет `NETunnelProviderManager` приложения и публикует системный статус VPN.
 ///
-/// System operations are delegated to `TunnelController`, which the widget's App
-/// Intent uses as well; this class only adds observation for SwiftUI.
+/// Системные операции делегируются `TunnelController`, которым пользуется и App Intent
+/// виджета; этот класс лишь добавляет наблюдение для SwiftUI.
 @MainActor
 @Observable
 final class VPNManager {
+    /// Текущее состояние подключения, отражённое из системы.
     private(set) var state: VPNConnectionState = .invalid
-    /// `connectedDate` of the system VPN session while connected.
+    /// `connectedDate` системной VPN-сессии, пока она подключена.
     private(set) var connectedDate: Date?
-    /// Last failure reported by the system or the extension.
+    /// Последняя ошибка, о которой сообщила система или расширение.
     private(set) var lastError: VPNError?
+    /// Загружена ли конфигурация хотя бы раз — до этого интерфейс не показывает статус.
     private(set) var isLoaded = false
 
+    /// Системная конфигурация VPN Mono VPN; `nil`, если она ещё не установлена.
     @ObservationIgnored private var manager: NETunnelProviderManager?
+    /// Токены подписок на уведомления NetworkExtension.
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    /// Отключение запросил пользователь — тогда переход в `.disconnected` не считается ошибкой.
     @ObservationIgnored private var userRequestedStop = false
+    /// Keychain для конфигурации туннеля и последней ошибки.
     @ObservationIgnored private let storage: SecureStorage
+    /// Логгер категории «VPN».
     @ObservationIgnored private let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "VPN")
 
+    /// Создаёт менеджер и подписывается на изменения статуса и конфигурации VPN.
     init(storage: SecureStorage = SecureStorage()) {
         self.storage = storage
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: .NEVPNStatusDidChange, object: nil, queue: .main) { [weak self] notification in
-            // Only the identity crosses into the main actor; the connection is re-read there.
+            // На главный актор передаётся только идентификатор; само соединение перечитывается там.
             let source = (notification.object as? NEVPNConnection).map(ObjectIdentifier.init)
             MainActor.assumeIsolated {
                 self?.handleStatusChange(from: source)
@@ -42,8 +50,8 @@ final class VPNManager {
         })
     }
 
-    /// Loads the existing configuration and the current status. Safe to call repeatedly
-    /// (on launch and whenever the app returns to the foreground).
+    /// Загружает существующую конфигурацию и текущий статус. Можно вызывать многократно
+    /// (при запуске и при каждом возврате приложения на передний план).
     func load() async {
         do {
             manager = try await TunnelController.loadManager()
@@ -54,7 +62,7 @@ final class VPNManager {
         refreshStatus()
     }
 
-    /// Re-reads the status from the system (used when returning to the foreground).
+    /// Перечитывает статус из системы (используется при возврате на передний план).
     func refreshStatus() {
         guard let connection = manager?.connection else {
             update(.disconnected, connectedDate: nil)
@@ -63,11 +71,12 @@ final class VPNManager {
         apply(connection)
     }
 
+    /// Сбрасывает показанную ошибку (после того как пользователь её закрыл).
     func clearError() {
         lastError = nil
     }
 
-    /// Starts the tunnel with the given sing-box configuration.
+    /// Запускает туннель с переданной конфигурацией sing-box.
     func connect(configuration: String) async throws {
         lastError = nil
         userRequestedStop = false
@@ -84,7 +93,7 @@ final class VPNManager {
         apply(manager.connection)
     }
 
-    /// Stops the tunnel and waits until the system reports `.disconnected`.
+    /// Останавливает туннель и ждёт, пока система сообщит `.disconnected`.
     func disconnect() async {
         guard let manager else { return }
         userRequestedStop = true
@@ -92,17 +101,20 @@ final class VPNManager {
         refreshStatus()
     }
 
-    /// Restarts the tunnel with a new configuration (server switch).
+    /// Перезапускает туннель с новой конфигурацией (смена сервера).
     func reconnect(configuration: String) async throws {
         await disconnect()
         try await connect(configuration: configuration)
     }
 
-    // MARK: - Private
+    // MARK: - Приватное
 
+    /// Обрабатывает `NEVPNStatusDidChange`: применяет новый статус и распознаёт неудачный запуск.
+    ///
+    /// Уведомления от чужих соединений (другие VPN-конфигурации) игнорируются.
     private func handleStatusChange(from source: ObjectIdentifier?) {
         guard let current = manager?.connection else {
-            // Changed by the widget or Settings before the configuration was loaded here.
+            // Статус изменил виджет или Настройки ещё до того, как конфигурация загрузилась здесь.
             Task { await load() }
             return
         }
@@ -110,7 +122,7 @@ final class VPNManager {
         let previous = state
         apply(current)
 
-        // connecting → disconnected without a user request means the start failed.
+        // connecting → disconnected без запроса пользователя означает, что запуск не удался.
         if state == .disconnected, previous == .connecting || previous == .reasserting, !userRequestedStop {
             Task { await reportDisconnectError(current) }
         }
@@ -119,21 +131,25 @@ final class VPNManager {
         }
     }
 
+    /// Применяет статус соединения; дата подключения берётся только в состоянии `.connected`.
     private func apply(_ connection: NEVPNConnection) {
         let newState = VPNConnectionState(connection.status)
         update(newState, connectedDate: newState == .connected ? connection.connectedDate : nil)
     }
 
+    /// Сохраняет состояние и дату подключения; при смене состояния обновляет виджет.
     private func update(_ newState: VPNConnectionState, connectedDate: Date?) {
         let changed = newState != state
         state = newState
         self.connectedDate = connectedDate
         if changed {
-            // Keep the Home Screen widget in sync with the real status.
+            // Держим виджет на домашнем экране в соответствии с реальным статусом.
             WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
         }
     }
 
+    /// Находит причину неожиданного отключения: сначала ошибку от расширения в Keychain,
+    /// затем последнюю ошибку отключения из системы.
     private func reportDisconnectError(_ connection: NEVPNConnection) async {
         if let message = try? storage.string(for: .lastTunnelError), !message.isEmpty {
             lastError = .tunnel(message)

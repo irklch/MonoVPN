@@ -1,23 +1,23 @@
 import Foundation
 
-/// Identifiers shared by the app and the Packet Tunnel extension.
+/// Идентификаторы, общие для приложения и расширения Packet Tunnel.
 ///
-/// Values come from `Config/Identifiers.xcconfig` through each target's Info.plist,
-/// so there is exactly one place to change them.
+/// Значения приходят из `Config/Identifiers.xcconfig` через Info.plist каждого таргета,
+/// поэтому менять их нужно ровно в одном месте.
 enum AppIdentifiers {
-    /// App Group shared by the app and the extension.
+    /// App Group, общая для приложения и расширения.
     static let appGroup: String = infoValue("MonoAppGroupIdentifier") ?? "group.com.irklch.monovpn"
 
-    /// Bundle identifier of the Packet Tunnel extension.
+    /// Bundle identifier расширения Packet Tunnel.
     static let tunnelBundleID: String = infoValue("MonoTunnelBundleIdentifier") ?? "com.irklch.monovpn.PacketTunnel"
 
-    /// Keychain access group shared by both targets (Keychain Sharing capability).
+    /// Группа доступа Keychain, общая для обоих таргетов (возможность Keychain Sharing).
     ///
-    /// Returns `nil` in unsigned builds, where `$(AppIdentifierPrefix)` is empty and the
-    /// group cannot exist; the default (per-app) keychain is used then.
+    /// Возвращает `nil` в сборках без подписи, где `$(AppIdentifierPrefix)` пуст и
+    /// группа не может существовать; тогда используется стандартный (свой для приложения) Keychain.
     static let keychainAccessGroup: String? = {
         guard let group = infoValue("MonoKeychainAccessGroup") else { return nil }
-        // A signed build has "<TEAMID>.com.irklch.monovpn.shared".
+        // В подписанной сборке значение вида "<TEAMID>.com.irklch.monovpn.shared".
         let parts = group.split(separator: ".", maxSplits: 1)
         guard let first = parts.first, first.count == 10, first.allSatisfy({ $0.isUppercase || $0.isNumber }) else {
             return nil
@@ -25,12 +25,16 @@ enum AppIdentifiers {
         return group
     }()
 
-    /// WidgetKit kind of the Home Screen connection widget.
+    /// WidgetKit kind виджета подключения на домашнем экране.
     static let widgetKind = "com.irklch.monovpn.widget.connection"
 
-    /// Subsystem for `os.Logger`.
+    /// Subsystem для `os.Logger`.
     static let logSubsystem = "com.irklch.monovpn"
 
+    /// Читает строку из Info.plist по ключу.
+    ///
+    /// Возвращает `nil`, если значения нет, оно пустое или содержит
+    /// неподставленную переменную сборки `$(...)`, — тогда вызывающий берёт значение по умолчанию.
     private static func infoValue(_ key: String) -> String? {
         guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
               !value.isEmpty, !value.contains("$(") else {
@@ -40,12 +44,12 @@ enum AppIdentifiers {
     }
 }
 
-/// Keys of items stored in the shared Keychain.
+/// Ключи элементов, хранящихся в общем Keychain.
 enum SecureStorageKey: String {
-    /// Subscription URL, parsed servers and selected server (JSON, app only).
+    /// URL подписки, разобранные серверы и выбранный сервер (JSON, только приложение).
     case appState = "app-state.v1"
-    /// Ready-to-run sing-box configuration of the selected server (app → extension).
+    /// Готовая к запуску конфигурация sing-box для выбранного сервера (приложение → расширение).
     case tunnelConfiguration = "tunnel-configuration.v1"
-    /// Last start error reported by the extension (extension → app).
+    /// Последняя ошибка запуска, о которой сообщило расширение (расширение → приложение).
     case lastTunnelError = "last-tunnel-error.v1"
 }
