@@ -353,6 +353,17 @@
         }
       }
     },
+    "error.switch.notStopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текущее подключение не остановилось — изменения не применены."
+          }
+        }
+      }
+    },
     "format.unknown": {
       "extractionState": "manual",
       "localizations": {

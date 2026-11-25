@@ -144,7 +144,11 @@ final class HomeViewModel {
         isPerformingAction = true
         defer { isPerformingAction = false }
         clearErrors()
-        await vpn.disconnect()
+        do {
+            try await vpn.disconnect()
+        } catch {
+            connectionError = error.localizedDescription
+        }
     }
 
     /// Сбрасывает ошибки приложения и VPN перед новым действием.
@@ -157,29 +161,54 @@ final class HomeViewModel {
 
     /// Выбирает сервер, сохраняет выбор и обновляет конфигурацию для виджета;
     /// если VPN был активен — переподключается к новому серверу.
+    ///
+    /// Если старый туннель не удалось остановить, выбор не меняется: выбранный сервер
+    /// всегда совпадает с тем, что реально запущено.
     func select(_ server: ServerConfiguration) async {
         guard server.id != selectedServer?.id else { return }
-        let wasActive = vpn.state.isActive
-        appState.selectedServerID = server.id
-        persist()
-        syncTunnelConfiguration()
-        if wasActive {
-            await restart(with: server)
+        await switchTunnel {
+            appState.selectedServerID = server.id
         }
     }
 
-    /// Останавливает текущий туннель и запускает новый с указанным сервером.
-    private func restart(with server: ServerConfiguration) async {
-        guard !isPerformingAction else { return }
+    /// Применяет `commit` (смену выбранного сервера или подписки) так, чтобы работающий
+    /// туннель никогда не расходился с сохранённым выбором.
+    ///
+    /// Туннель не работает — изменение просто сохраняется. Работает — сначала он
+    /// останавливается с подтверждением системы; только после этого изменение сохраняется
+    /// и туннель запускается с новым сервером. Возвращает `false`, если изменение не применено
+    /// (туннель не остановился или уже выполняется другое действие); причина — в `connectionError`.
+    @discardableResult
+    private func switchTunnel(_ commit: () -> Void) async -> Bool {
+        guard vpn.state != .disconnected, vpn.state != .invalid else {
+            commit()
+            persist()
+            syncTunnelConfiguration()
+            return true
+        }
+        guard !isPerformingAction else {
+            connectionError = VPNError.busy.localizedDescription
+            return false
+        }
         isPerformingAction = true
         defer { isPerformingAction = false }
         clearErrors()
         do {
-            let configuration = try VPNConfigurationBuilder.build(for: server)
-            try await vpn.reconnect(configuration: configuration)
+            try await vpn.disconnect()
+        } catch {
+            connectionError = error.localizedDescription
+            return false
+        }
+        commit()
+        persist()
+        syncTunnelConfiguration()
+        guard let server = selectedServer else { return true }
+        do {
+            try await vpn.connect(configuration: VPNConfigurationBuilder.build(for: server))
         } catch {
             connectionError = error.localizedDescription
         }
+        return true
     }
 
     // MARK: - Подписка
@@ -194,7 +223,10 @@ final class HomeViewModel {
         subscriptionError = nil
         do {
             let subscription = try await service.importSubscription(from: input)
-            await apply(subscription)
+            guard await apply(subscription) else {
+                subscriptionError = String(localized: "error.switch.notStopped")
+                return false
+            }
             return true
         } catch {
             // Предыдущая подписка остаётся нетронутой.
@@ -211,18 +243,26 @@ final class HomeViewModel {
         subscriptionError = nil
         do {
             let subscription = try await service.refresh(source)
-            await apply(subscription)
+            if await !apply(subscription) {
+                subscriptionError = String(localized: "error.switch.notStopped")
+            }
         } catch {
             subscriptionError = error.localizedDescription
         }
     }
 
     /// Отключает VPN (если нужно) и удаляет подписку и все секреты.
+    ///
+    /// Если туннель не удалось остановить, ничего не удаляется: работающий туннель
+    /// не должен остаться без подписки и конфигурации, из которых он получен.
     func deleteSubscription() async {
-        // Останавливаем безусловно (даже если выполняется другое действие):
-        // конфигурация не должна пережить подписку, из которой она получена.
         if vpn.state != .disconnected, vpn.state != .invalid {
-            await vpn.disconnect()
+            do {
+                try await vpn.disconnect()
+            } catch {
+                subscriptionError = error.localizedDescription
+                return
+            }
         }
         do {
             try store.removeAll()
@@ -236,17 +276,21 @@ final class HomeViewModel {
     }
 
     /// Применяет новую подписку: сохраняет её, обновляет конфигурацию туннеля и при
-    /// необходимости перезапускает VPN.
-    private func apply(_ subscription: Subscription) async {
-        let previousServer = selectedServer
-        appState.replaceSubscription(with: subscription)
-        persist()
-        syncTunnelConfiguration()
+    /// необходимости перезапускает VPN. Возвращает `false`, если работающий туннель
+    /// не удалось остановить — тогда подписка остаётся прежней.
+    private func apply(_ subscription: Subscription) async -> Bool {
+        var updated = appState
+        updated.replaceSubscription(with: subscription)
+        let commit = { self.appState = updated }
 
         // Работающий туннель использует старые параметры: перезапускаем, если они изменились.
-        if vpn.state.isActive, let server = selectedServer, server != previousServer {
-            await restart(with: server)
+        guard updated.selectedServer != selectedServer else {
+            commit()
+            persist()
+            syncTunnelConfiguration()
+            return true
         }
+        return await switchTunnel(commit)
     }
 
     /// Поддерживает актуальной копию конфигурации sing-box выбранного сервера в Keychain.

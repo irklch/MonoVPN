@@ -1,6 +1,28 @@
 {
   "sourceLanguage": "ru",
   "strings": {
+    "error.vpn.accessDenied": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет доступа к конфигурации VPN. Откройте Mono VPN."
+          }
+        }
+      }
+    },
+    "error.vpn.busy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дождитесь завершения текущей операции VPN."
+          }
+        }
+      }
+    },
     "error.vpn.configuration %@": {
       "extractionState": "manual",
       "localizations": {

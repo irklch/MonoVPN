@@ -40,19 +40,29 @@ struct TunnelCommandTests {
 
 /// Тесты вычисления состояния виджета.
 struct WidgetVPNStateTests {
-    /// Состояние виджета выводится из системного статуса, наличия конфигурации и последней ошибки.
+    /// Состояние виджета выводится из системного статуса, доступа к конфигурации и ошибок.
     @Test func resolvesFromSystemStatus() {
-        #expect(WidgetVPNState.resolve(status: .connected, hasConfiguration: true, lastError: nil) == .connected)
-        #expect(WidgetVPNState.resolve(status: .reasserting, hasConfiguration: true, lastError: nil) == .connecting)
-        #expect(WidgetVPNState.resolve(status: .disconnecting, hasConfiguration: true, lastError: nil) == .disconnecting)
-        #expect(WidgetVPNState.resolve(status: .disconnected, hasConfiguration: true, lastError: nil) == .disconnected)
-        #expect(WidgetVPNState.resolve(status: .disconnected, hasConfiguration: true, lastError: "x") == .failed)
-        // Конфигурация ещё не установлена → её должно создать приложение.
-        #expect(WidgetVPNState.resolve(status: nil, hasConfiguration: true, lastError: nil) == .needsSetup)
+        func resolve(_ status: NEVPNStatus?, _ access: WidgetConfigurationAccess = .found, server: Bool = true, error: Bool = false) -> WidgetVPNState {
+            WidgetVPNState.resolve(status: status, access: access, hasConfiguration: server, hasError: error)
+        }
+        #expect(resolve(.connected) == .connected)
+        #expect(resolve(.reasserting) == .connecting)
+        #expect(resolve(.disconnecting) == .disconnecting)
+        #expect(resolve(.disconnected) == .disconnected)
+        #expect(resolve(.disconnected, error: true) == .failed)
+        // Подтверждённое подключение важнее устаревшей ошибки.
+        #expect(resolve(.connected, error: true) == .connected)
+        // Конфигурация не найдена → её должно создать приложение.
+        #expect(resolve(nil, .notInstalled) == .needsSetup)
+        #expect(resolve(.invalid) == .needsSetup)
+        // Нет доступа к конфигурации: статус неизвестен, никогда не «Подключено».
+        #expect(resolve(nil, .unavailable) == .unavailable)
+        #expect(resolve(.connected, .unavailable) == .unavailable)
+        #expect(resolve(nil, .unavailable, server: false) == .unavailable)
         // Нет выбранного сервера.
-        #expect(WidgetVPNState.resolve(status: .disconnected, hasConfiguration: false, lastError: nil) == .noServer)
+        #expect(resolve(.disconnected, server: false) == .noServer)
         // Работающий туннель показывается всегда, чтобы его можно было остановить из виджета.
-        #expect(WidgetVPNState.resolve(status: .connected, hasConfiguration: false, lastError: nil) == .connected)
+        #expect(resolve(.connected, server: false) == .connected)
     }
 
     /// Какая команда отправляется нажатием в каждом состоянии.
@@ -63,6 +73,20 @@ struct WidgetVPNStateTests {
         #expect(WidgetVPNState.failed.command == .connect)
         #expect(WidgetVPNState.noServer.command == nil)
         #expect(WidgetVPNState.disconnecting.command == nil)
+        // Без доступа к конфигурации нажатие открывает приложение, а не запускает интент.
+        #expect(WidgetVPNState.needsSetup.command == nil)
+        #expect(WidgetVPNState.unavailable.command == nil)
+        #expect(WidgetVPNState.needsSetup.opensApp)
+        #expect(WidgetVPNState.unavailable.opensApp)
+        #expect(!WidgetVPNState.disconnected.opensApp)
+    }
+
+    /// Ошибка чтения настроек VPN разделяется на отказ в доступе и системную ошибку.
+    @Test func classifiesLoadErrors() {
+        let denied = NSError(domain: NEVPNErrorDomain, code: NEVPNError.configurationReadWriteFailed.rawValue)
+        #expect(TunnelController.classifyLoadError(denied) == .accessDenied)
+        let other = NSError(domain: NSCocoaErrorDomain, code: 1)
+        #expect(TunnelController.classifyLoadError(other) == .configurationFailed(other.localizedDescription))
     }
 }
 

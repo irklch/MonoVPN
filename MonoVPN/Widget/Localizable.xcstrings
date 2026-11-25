@@ -122,6 +122,17 @@
         }
       }
     },
+    "widget.status.needsSetup": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройте в приложении"
+          }
+        }
+      }
+    },
     "widget.status.noServer": {
       "extractionState": "manual",
       "localizations": {
@@ -129,6 +140,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет сервера"
+          }
+        }
+      }
+    },
+    "widget.status.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте приложение"
           }
         }
       }

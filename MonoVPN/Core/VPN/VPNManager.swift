@@ -26,6 +26,8 @@ final class VPNManager {
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     /// Отключение запросил пользователь — тогда переход в `.disconnected` не считается ошибкой.
     @ObservationIgnored private var userRequestedStop = false
+    /// Выполняется connect/disconnect: параллельная операция получает `VPNError.busy`.
+    @ObservationIgnored private var isOperating = false
     /// Keychain для конфигурации туннеля и последней ошибки.
     @ObservationIgnored private let storage: SecureStorage
     /// Логгер категории «VPN».
@@ -77,12 +79,20 @@ final class VPNManager {
     }
 
     /// Запускает туннель с переданной конфигурацией sing-box.
+    ///
+    /// Если туннель уже поднят (например, из виджета), повторно не запускается;
+    /// если он ещё отключается — сначала дожидается `.disconnected` (см. `TunnelController.start`).
     func connect(configuration: String) async throws {
+        guard !isOperating else { throw VPNError.busy }
+        isOperating = true
+        defer { isOperating = false }
+
         lastError = nil
         userRequestedStop = false
         do {
             try storage.set(configuration, for: .tunnelConfiguration)
             try? storage.remove(.lastTunnelError)
+            try? storage.remove(.widgetError)
         } catch {
             throw VPNError.configurationFailed(error.localizedDescription)
         }
@@ -94,17 +104,23 @@ final class VPNManager {
     }
 
     /// Останавливает туннель и ждёт, пока система сообщит `.disconnected`.
-    func disconnect() async {
+    ///
+    /// Бросает `VPNError.timeout`, если система не подтвердила остановку: туннель, возможно,
+    /// ещё работает, и вызывающий не должен переподключаться или удалять конфигурацию.
+    func disconnect() async throws {
+        guard !isOperating else { throw VPNError.busy }
+        isOperating = true
+        defer {
+            isOperating = false
+            refreshStatus()
+        }
+        if manager == nil {
+            // Туннель мог запустить виджет до того, как приложение загрузило конфигурацию.
+            manager = try? await TunnelController.loadManager()
+        }
         guard let manager else { return }
         userRequestedStop = true
-        await TunnelController.stop(manager)
-        refreshStatus()
-    }
-
-    /// Перезапускает туннель с новой конфигурацией (смена сервера).
-    func reconnect(configuration: String) async throws {
-        await disconnect()
-        try await connect(configuration: configuration)
+        try await TunnelController.stop(manager)
     }
 
     // MARK: - Приватное

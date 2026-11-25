@@ -104,7 +104,7 @@ struct ConnectionWidgetView: View {
     /// Тёмный фон виджета (#171717).
     private static let background = Color(red: 0x17 / 255, green: 0x17 / 255, blue: 0x17 / 255)
 
-    /// Кнопка, статус и, для состояния `needsSetup`, URL открытия приложения.
+    /// Кнопка, статус и, для состояний `needsSetup`/`unavailable`, URL открытия приложения.
     var body: some View {
         VStack(spacing: 12) {
             control
@@ -122,7 +122,9 @@ struct ConnectionWidgetView: View {
         // Системную конфигурацию VPN можно создать только в приложении (оно показывает
         // запрос разрешения). Маленький виджет поддерживает один URL на весь виджет,
         // поэтому в этом состоянии нажатие открывает приложение с явной командой «connect».
-        .widgetURL(state == .needsSetup ? TunnelCommand.connect.url : nil)
+        // То же для `unavailable`: процесс виджета не смог прочитать конфигурацию VPN,
+        // поэтому управление безопасно передаётся основному приложению.
+        .widgetURL(state.opensApp ? TunnelCommand.connect.url : nil)
     }
 
     /// Кнопка с интентом в интерактивных состояниях; в остальных — просто картинка кнопки.
@@ -137,7 +139,7 @@ struct ConnectionWidgetView: View {
             Button(intent: ToggleVPNIntent(connect: false)) { powerButton }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("widget.button.disconnect"))
-        case .needsSetup, .noServer, .disconnecting:
+        case .needsSetup, .unavailable, .noServer, .disconnecting:
             powerButton
         }
     }
@@ -145,7 +147,7 @@ struct ConnectionWidgetView: View {
     /// Круглая кнопка питания: белая при подключении, приглушённая без сервера и во время перехода.
     private var powerButton: some View {
         let isOn = state == .connected
-        let isDimmed = state == .noServer || state.isTransitioning
+        let isDimmed = state == .noServer || state == .unavailable || state.isTransitioning
         return ZStack {
             Circle()
                 .fill(isOn ? Color.white : Color.white.opacity(fullColor ? 0.1 : 0.2))
@@ -168,7 +170,9 @@ struct ConnectionWidgetView: View {
     private var statusKey: LocalizedStringKey {
         switch state {
         case .noServer: "widget.status.noServer"
-        case .needsSetup, .disconnected: "widget.status.disconnected"
+        case .needsSetup: "widget.status.needsSetup"
+        case .unavailable: "widget.status.unavailable"
+        case .disconnected: "widget.status.disconnected"
         case .connecting: "widget.status.connecting"
         case .connected: "widget.status.connected"
         case .disconnecting: "widget.status.disconnecting"
@@ -185,4 +189,5 @@ struct ConnectionWidgetView: View {
     ConnectionEntry(date: .now, state: .connected)
     ConnectionEntry(date: .now, state: .noServer)
     ConnectionEntry(date: .now, state: .failed)
+    ConnectionEntry(date: .now, state: .unavailable)
 }

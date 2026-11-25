@@ -52,4 +52,6 @@ enum SecureStorageKey: String {
     case tunnelConfiguration = "tunnel-configuration.v1"
     /// Последняя ошибка запуска, о которой сообщило расширение (расширение → приложение).
     case lastTunnelError = "last-tunnel-error.v1"
+    /// Последняя ошибка команды виджета (виджет → виджет/приложение); сбрасывается после успешного подключения.
+    case widgetError = "widget-error.v1"
 }

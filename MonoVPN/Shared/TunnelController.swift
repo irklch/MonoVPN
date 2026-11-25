@@ -58,6 +58,10 @@ enum VPNError: LocalizedError, Equatable {
     case tunnel(String)
     /// Система не подтвердила изменение статуса вовремя.
     case timeout
+    /// Конфигурация VPN существует или может существовать, но система отказала процессу в доступе к ней.
+    case accessDenied
+    /// Уже выполняется другая операция с VPN; новая не начинается, чтобы не было гонок.
+    case busy
 
     // Строки лежат в общей таблице "Tunnel", чтобы их мог показать и виджет.
     /// Локализованный текст ошибки для интерфейса.
@@ -73,8 +77,22 @@ enum VPNError: LocalizedError, Equatable {
             String(localized: "error.vpn.tunnel \(message)", table: "Tunnel")
         case .timeout:
             String(localized: "error.vpn.timeout", table: "Tunnel")
+        case .accessDenied:
+            String(localized: "error.vpn.accessDenied", table: "Tunnel")
+        case .busy:
+            String(localized: "error.vpn.busy", table: "Tunnel")
         }
     }
+}
+
+/// Результат поиска конфигурации VPN Mono VPN в системных настройках.
+enum TunnelLookup {
+    /// Конфигурация найдена.
+    case found(NETunnelProviderManager)
+    /// Чтение удалось, но конфигурации нет: её ещё не создавали (или удалили в Настройках).
+    case notInstalled
+    /// Чтение не удалось: отказ в доступе (`.accessDenied`) или системная ошибка (`.configurationFailed`).
+    case unavailable(VPNError)
 }
 
 /// Операции NetworkExtension без собственного состояния, общие для приложения (`VPNManager`) и
@@ -88,6 +106,30 @@ enum TunnelController {
         return managers.first { manager in
             (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == AppIdentifiers.tunnelBundleID
         }
+    }
+
+    /// То же, что `loadManager()`, но различает отсутствие конфигурации и ошибку доступа к ней.
+    ///
+    /// Документация Apple: `loadAllFromPreferences` читает конфигурации, «созданные вызывающим
+    /// приложением». Поэтому расширение виджета может как увидеть конфигурацию основного
+    /// приложения, так и получить пустой список или ошибку — вызывающий обязан обработать все три случая.
+    static func lookupManager() async -> TunnelLookup {
+        do {
+            guard let manager = try await loadManager() else { return .notInstalled }
+            return .found(manager)
+        } catch {
+            return .unavailable(classifyLoadError(error))
+        }
+    }
+
+    /// Ошибку чтения `NEVPNErrorDomain/configurationReadWriteFailed` система возвращает при
+    /// отказе в доступе к настройкам VPN; остальные ошибки считаются системными.
+    static func classifyLoadError(_ error: Error) -> VPNError {
+        let nsError = error as NSError
+        if nsError.domain == NEVPNErrorDomain, nsError.code == NEVPNError.configurationReadWriteFailed.rawValue {
+            return .accessDenied
+        }
+        return .configurationFailed(error.localizedDescription)
     }
 
     /// Создаёт или обновляет конфигурацию VPN и включает её.
@@ -110,7 +152,19 @@ enum TunnelController {
 
     /// Запускает туннель. Если управление перехватило другое VPN-приложение, сначала снова
     /// включает Mono VPN (существующая конфигурация обновляется без системного запроса).
-    static func start(_ manager: NETunnelProviderManager) async throws {
+    ///
+    /// Статус перепроверяется в системе: туннель, который уже поднят (например, из виджета или
+    /// Настроек), повторно не запускается, а отключающийся сначала дожидается `.disconnected`.
+    static func start(_ manager: NETunnelProviderManager, timeout: Duration = .seconds(15)) async throws {
+        switch manager.connection.status {
+        case .connecting, .connected, .reasserting:
+            return
+        case .disconnecting:
+            let status = await waitForStatus(of: manager.connection, timeout: timeout) { $0 == .disconnected || $0 == .invalid }
+            guard status == .disconnected || status == .invalid else { throw VPNError.timeout }
+        default:
+            break
+        }
         if !manager.isEnabled {
             manager.isEnabled = true
             try await save(manager)
@@ -123,18 +177,21 @@ enum TunnelController {
     }
 
     /// Останавливает туннель и ждёт, пока система подтвердит `.disconnected`.
-    /// Возвращает `false`, если подтверждение не пришло за `timeout`.
-    @discardableResult
-    static func stop(_ manager: NETunnelProviderManager, timeout: Duration = .seconds(15)) async -> Bool {
+    ///
+    /// Бросает `VPNError.timeout`, если подтверждение не пришло за `timeout`: туннель, возможно,
+    /// ещё работает, поэтому вызывающий не должен переподключаться или удалять конфигурацию.
+    static func stop(_ manager: NETunnelProviderManager, timeout: Duration = .seconds(15)) async throws {
         let connection = manager.connection
         switch connection.status {
         case .disconnected, .invalid:
-            return true
+            return
+        case .disconnecting:
+            break // уже останавливается — только ждём
         default:
             connection.stopVPNTunnel()
         }
         let status = await waitForStatus(of: connection, timeout: timeout) { $0 == .disconnected || $0 == .invalid }
-        return status == .disconnected || status == .invalid
+        guard status == .disconnected || status == .invalid else { throw VPNError.timeout }
     }
 
     /// Ждёт (без опроса) уведомлений `NEVPNStatusDidChange`, пока не выполнится `predicate`
