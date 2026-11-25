@@ -42,7 +42,8 @@ struct ServersView: View {
         .presentationCornerRadius(28)
     }
 
-    /// Прокручиваемый список серверов с разделителями и пропущенными записями в конце.
+    /// Прокручиваемый список всех распознанных серверов с разделителями.
+    /// Неподдерживаемые ядром серверы показаны неактивными; подробности — в диагностике импорта.
     private var list: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -53,14 +54,10 @@ struct ServersView: View {
                         }
                         dismiss()
                     }
-                    .disabled(model.isBusy)
+                    .disabled(model.isBusy || !server.isSupported)
                     if server.id != model.servers.last?.id {
                         Divider().overlay(Mono.Palette.separator)
                     }
-                }
-                if let issues = model.subscription?.issues, !issues.isEmpty {
-                    SkippedServersNote(issues: issues)
-                        .padding(.top, 20)
                 }
             }
             .padding(.horizontal, Mono.Metrics.screenPadding)
@@ -89,7 +86,7 @@ struct ServersView: View {
     }
 }
 
-/// Строка списка серверов: имя, протокол, проигнорированные параметры и отметка выбора.
+/// Строка списка серверов: имя, протокол (или «Не поддерживается») и отметка выбора.
 private struct ServerRow: View {
     /// Сервер этой строки.
     let server: ServerConfiguration
@@ -105,16 +102,16 @@ private struct ServerRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(server.name)
                         .font(.body.weight(isSelected ? .semibold : .regular))
-                        .foregroundStyle(Mono.Palette.primary)
+                        .foregroundStyle(server.isSupported ? Mono.Palette.primary : Mono.Palette.tertiary)
                         .lineLimit(2)
-                    Text(server.protocolSummary)
-                        .font(.footnote)
-                        .foregroundStyle(Mono.Palette.secondary)
-                    if !server.ignoredParameters.isEmpty {
-                        Text("servers.ignoredParameters \(server.ignoredParameters.joined(separator: ", "))")
-                            .font(.caption)
+                    if server.isSupported {
+                        Text(server.protocolSummary)
+                            .font(.footnote)
                             .foregroundStyle(Mono.Palette.secondary)
-                            .lineLimit(2)
+                    } else {
+                        Text("servers.unsupported \(server.protocolSummary)")
+                            .font(.footnote)
+                            .foregroundStyle(Mono.Palette.tertiary)
                     }
                 }
                 Spacer(minLength: 8)
@@ -130,26 +127,5 @@ private struct ServerRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
-/// Перечисляет записи подписки, которые не были импортированы, чтобы ничего не терялось молча.
-struct SkippedServersNote: View {
-    /// Пропущенные записи с причинами.
-    let issues: [ParseIssue]
-
-    /// Заголовок с количеством и до 10 записей вида «имя: причина».
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("servers.skipped \(issues.count)")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Mono.Palette.secondary)
-            ForEach(Array(issues.prefix(10).enumerated()), id: \.offset) { _, issue in
-                Text(verbatim: "• \(issue.name ?? "—"): \(issue.reason)")
-                    .font(.caption)
-                    .foregroundStyle(Mono.Palette.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
     }
 }

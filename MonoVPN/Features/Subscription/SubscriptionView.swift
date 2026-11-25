@@ -10,10 +10,12 @@ struct SubscriptionView: View {
     @State private var input = ""
     /// Показан ли диалог подтверждения удаления.
     @State private var isDeleteConfirmationPresented = false
+    /// Показано ли окно диагностики импорта.
+    @State private var isDiagnosticsPresented = false
     /// Фокус поля ввода; снимается перед сохранением, чтобы скрыть клавиатуру.
     @FocusState private var isFieldFocused: Bool
 
-    /// Карточка текущей подписки, поле ввода, ошибка, кнопки и список пропущенных записей.
+    /// Карточка текущей подписки, поле ввода, ошибка, кнопки и ссылка на диагностику импорта.
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -74,9 +76,20 @@ struct SubscriptionView: View {
                 }
                 .padding(.top, 24)
 
-                if let issues = model.subscription?.issues, !issues.isEmpty {
-                    SkippedServersNote(issues: issues)
-                        .padding(.top, 24)
+                if let subscription = model.subscription {
+                    let count = ImportDiagnostics.entries(for: subscription).count
+                    if count > 0 {
+                        Button {
+                            isDiagnosticsPresented = true
+                        } label: {
+                            Text("diagnostics.open \(count)")
+                                .font(.footnote)
+                                .foregroundStyle(Mono.Palette.secondary)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 8)
+                    }
                 }
             }
             .padding(.horizontal, Mono.Metrics.screenPadding)
@@ -87,6 +100,11 @@ struct SubscriptionView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
+        .sheet(isPresented: $isDiagnosticsPresented) {
+            if let subscription = model.subscription {
+                ImportDiagnosticsView(subscription: subscription)
+            }
+        }
         .confirmationDialog(
             "subscription.delete.title",
             isPresented: $isDeleteConfirmationPresented,

@@ -94,19 +94,34 @@ struct ServerConfiguration: Codable, Hashable, Identifiable, Sendable {
     var vmessSecurity: String?
     /// alterId для VMess (устаревший параметр, передаётся как есть).
     var vmessAlterID: Int?
+    /// Плагин Shadowsocks в терминах sing-box (`obfs-local`, `v2ray-plugin`); `nil` — без плагина.
+    var shadowsocksPlugin: String?
+    /// Параметры плагина Shadowsocks (`obfs=http;obfs-host=...`).
+    var shadowsocksPluginOptions: String?
 
     /// Транспорт; по умолчанию TCP.
     var transport: TransportSettings = .tcp
     /// Параметры TLS; `nil` — соединение без TLS.
     var tls: TLSSettings?
 
-    /// Параметры из ссылки, которые sing-box не поддерживает и которые поэтому
-    /// не применены. Показываются пользователю, никогда не отбрасываются молча.
+    /// Имена безвредных параметров из ссылки, которые sing-box не поддерживает и которые
+    /// поэтому не применены. Показываются только в диагностике импорта (без значений).
     var ignoredParameters: [String] = []
 
+    /// Почему сервер нельзя запустить в подключённом sing-box; `nil` — сервер поддерживается.
+    /// Неподдерживаемый сервер показывается в списке неактивным и никогда не выбирается.
+    var incompatibility: ProxyLinkError?
+
+    /// Можно ли выбрать сервер и подключиться к нему.
+    var isSupported: Bool {
+        incompatibility == nil
+    }
+
     /// Короткое техническое описание для интерфейса, например «VLESS · REALITY».
+    /// Для неподдерживаемого сервера — только протокол: транспорт и TLS не разобраны.
     var protocolSummary: String {
         var parts = [proxyProtocol.displayName]
+        guard isSupported else { return parts[0] }
         if transport != .tcp {
             parts.append(transport.displayName)
         }

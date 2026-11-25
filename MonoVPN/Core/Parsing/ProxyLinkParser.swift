@@ -2,7 +2,11 @@ import CryptoKit
 import Foundation
 
 /// Ошибки разбора одной прокси-ссылки. Описания показываются пользователю.
-enum ProxyLinkError: LocalizedError, Equatable {
+///
+/// Делятся на два вида (`isCoreLimitation`): ссылка испорчена — запись пропускается и попадает
+/// только в диагностику; ссылка корректна, но использует возможность, которой нет в подключённом
+/// sing-box, — сервер показывается в списке как «Не поддерживается».
+enum ProxyLinkError: LocalizedError, Codable, Hashable, Sendable {
     /// Схема ссылки не поддерживается (в значении — сама схема).
     case unsupportedScheme(String)
     /// Ссылка синтаксически испорчена.
@@ -33,8 +37,23 @@ enum ProxyLinkError: LocalizedError, Equatable {
     case invalidRealityShortID
     /// Шифр Shadowsocks, которого нет в sing-box.
     case unsupportedShadowsocksMethod(String)
-    /// Плагин Shadowsocks (не поддерживается).
+    /// Плагин Shadowsocks, которого нет в sing-box (поддерживаются `obfs-local` и `v2ray-plugin` в режиме websocket).
     case unsupportedShadowsocksPlugin(String)
+    /// gRPC `authority` отличается от SNI: в sing-box (gRPC lite) `:authority` всегда равен SNI или адресу сервера.
+    case unsupportedGRPCAuthority(String)
+
+    /// Ссылка корректна, но требует возможности, которой нет в подключённом ядре.
+    var isCoreLimitation: Bool {
+        switch self {
+        case .unsupportedEncryption, .unsupportedSecurity, .unsupportedTransport, .unsupportedHeaderType,
+             .unsupportedFlow, .flowRequiresTLS, .unsupportedShadowsocksMethod, .unsupportedShadowsocksPlugin,
+             .unsupportedGRPCAuthority:
+            true
+        case .unsupportedScheme, .malformed, .missingHost, .invalidPort, .invalidUUID, .missingPassword,
+             .invalidRealityPublicKey, .invalidRealityShortID:
+            false
+        }
+    }
 
     /// Локализованный текст ошибки для интерфейса.
     var errorDescription: String? {
@@ -71,16 +90,19 @@ enum ProxyLinkError: LocalizedError, Equatable {
             String(localized: "error.link.unsupportedShadowsocksMethod \(value)")
         case let .unsupportedShadowsocksPlugin(value):
             String(localized: "error.link.unsupportedShadowsocksPlugin \(value)")
+        case let .unsupportedGRPCAuthority(value):
+            String(localized: "error.link.unsupportedGRPCAuthority \(value)")
         }
     }
 }
 
 /// Разбирает отдельные прокси-ссылки: `vless://`, `vmess://`, `trojan://`, `ss://`.
 ///
-/// Применяются только параметры, которые sing-box может выполнить. Неподдерживаемые
-/// параметры, меняющие поведение, либо делают ссылку ошибочной (когда их игнорирование
-/// привело бы к подключению не так, как задумал провайдер), либо попадают в
-/// `ServerConfiguration.ignoredParameters`.
+/// Применяются только параметры, которые подключённый sing-box (1.14.4, см. `Frameworks/LIBBOX_VERSION`)
+/// может выполнить. Если игнорирование параметра привело бы к подключению не так, как задумал
+/// провайдер (транспорт, маскировка, authority, ...), сервер помечается неподдерживаемым
+/// (`ServerConfiguration.incompatibility`) — без подмены транспорта. Безвредные неприменённые
+/// параметры попадают в `ServerConfiguration.ignoredParameters` (только имена ключей).
 enum ProxyLinkParser {
     /// Схемы ссылок, которые умеет разбирать парсер.
     static let supportedSchemes: Set<String> = ["vless", "vmess", "trojan", "ss"]
@@ -95,6 +117,11 @@ enum ProxyLinkParser {
         "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305",
         "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
         "chacha20-ietf-poly1305", "xchacha20-ietf-poly1305",
+    ]
+
+    /// Плагины Shadowsocks (SIP003), встроенные в sing-box; ключ — имя из ссылки, значение — имя в sing-box.
+    static let supportedShadowsocksPlugins: [String: String] = [
+        "obfs-local": "obfs-local", "simple-obfs": "obfs-local", "v2ray-plugin": "v2ray-plugin",
     ]
 
     /// Ключи query, несущие только метаданные; их можно пропускать без предупреждения.
@@ -141,10 +168,6 @@ enum ProxyLinkParser {
         guard let uuid = parts.user, isValidUUID(uuid) else { throw ProxyLinkError.invalidUUID }
         var query = parts.query
 
-        if let encryption = query.removeValue(forKey: "encryption"), !encryption.isEmpty, encryption != "none" {
-            throw ProxyLinkError.unsupportedEncryption(encryption)
-        }
-
         var server = ServerConfiguration(
             id: stableID(for: link),
             name: parts.name ?? parts.host,
@@ -153,13 +176,20 @@ enum ProxyLinkParser {
             port: parts.port,
             uuid: uuid
         )
-        server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
-        server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
+        try applyCoreFeatures(to: &server) { server in
+            if let encryption = query.removeValue(forKey: "encryption"), !encryption.isEmpty, encryption != "none" {
+                // Новое шифрование VLESS Xray содержит ключ: в сообщение идёт только имя алгоритма.
+                throw ProxyLinkError.unsupportedEncryption(String(encryption.split(separator: ".").first ?? ""))
+            }
+            server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
+            server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
+            try applyGRPCAuthority(from: &query, to: server)
 
-        if let flow = query.removeValue(forKey: "flow"), !flow.isEmpty {
-            guard flow == "xtls-rprx-vision" else { throw ProxyLinkError.unsupportedFlow(flow) }
-            guard server.tls != nil, server.transport == .tcp else { throw ProxyLinkError.flowRequiresTLS }
-            server.flow = flow
+            if let flow = query.removeValue(forKey: "flow"), !flow.isEmpty {
+                guard flow == "xtls-rprx-vision" else { throw ProxyLinkError.unsupportedFlow(flow) }
+                guard server.tls != nil, server.transport == .tcp else { throw ProxyLinkError.flowRequiresTLS }
+                server.flow = flow
+            }
         }
         server.ignoredParameters += remainingParameters(query)
         return server
@@ -181,11 +211,14 @@ enum ProxyLinkParser {
             port: parts.port,
             password: password
         )
-        server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
-        // Trojan по определению работает через TLS, если это явно не отключено.
-        server.tls = try tls(from: &query, defaultSecurity: "tls", ignored: &server.ignoredParameters)
-        if let flow = query.removeValue(forKey: "flow"), !flow.isEmpty {
-            throw ProxyLinkError.unsupportedFlow(flow)
+        try applyCoreFeatures(to: &server) { server in
+            server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
+            // Trojan по определению работает через TLS, если это явно не отключено.
+            server.tls = try tls(from: &query, defaultSecurity: "tls", ignored: &server.ignoredParameters)
+            try applyGRPCAuthority(from: &query, to: server)
+            if let flow = query.removeValue(forKey: "flow"), !flow.isEmpty {
+                throw ProxyLinkError.unsupportedFlow(flow)
+            }
         }
         server.ignoredParameters += remainingParameters(query)
         return server
@@ -225,6 +258,7 @@ enum ProxyLinkParser {
         query["fp"] = string("fp")
         if query["type"] == "grpc" {
             query["serviceName"] = string("path")
+            query["authority"] = string("authority")
             query["path"] = nil
             if let mode = string("type"), mode != "gun", mode != "none" {
                 query["mode"] = mode
@@ -243,8 +277,11 @@ enum ProxyLinkParser {
             vmessSecurity: string("scy") ?? "auto",
             vmessAlterID: string("aid").flatMap(Int.init) ?? 0
         )
-        server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
-        server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
+        try applyCoreFeatures(to: &server) { server in
+            server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
+            server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
+            try applyGRPCAuthority(from: &query, to: server)
+        }
         server.ignoredParameters += remainingParameters(query)
         return server
     }
@@ -300,12 +337,6 @@ enum ProxyLinkParser {
         let method = userInfo[..<separator].lowercased()
         let password = String(userInfo[userInfo.index(after: separator)...])
         guard !password.isEmpty else { throw ProxyLinkError.missingPassword }
-        guard supportedShadowsocksMethods.contains(method) else {
-            throw ProxyLinkError.unsupportedShadowsocksMethod(method)
-        }
-        if let plugin = query.removeValue(forKey: "plugin"), !plugin.isEmpty {
-            throw ProxyLinkError.unsupportedShadowsocksPlugin(plugin.components(separatedBy: ";")[0])
-        }
 
         var server = ServerConfiguration(
             id: stableID(for: link),
@@ -316,21 +347,84 @@ enum ProxyLinkParser {
             password: password,
             method: method
         )
+        try applyCoreFeatures(to: &server) { server in
+            guard supportedShadowsocksMethods.contains(method) else {
+                throw ProxyLinkError.unsupportedShadowsocksMethod(method)
+            }
+            if let plugin = query.removeValue(forKey: "plugin"), !plugin.isEmpty {
+                try applyShadowsocksPlugin(plugin, to: &server)
+            }
+        }
         server.ignoredParameters += remainingParameters(query)
         return server
     }
 
+    /// SIP002 `plugin=name;opts`: `obfs-local`/`simple-obfs` и `v2ray-plugin` (только websocket —
+    /// режим QUIC в sing-box не реализован). Остальные плагины — ограничение ядра.
+    private static func applyShadowsocksPlugin(_ plugin: String, to server: inout ServerConfiguration) throws {
+        let name = plugin.components(separatedBy: ";")[0].trimmingCharacters(in: .whitespaces)
+        let options = plugin.dropFirst(name.count).drop { $0 == ";" }
+        guard let coreName = supportedShadowsocksPlugins[name.lowercased()] else {
+            throw ProxyLinkError.unsupportedShadowsocksPlugin(name)
+        }
+        if coreName == "v2ray-plugin", options.split(separator: ";").contains(where: { $0.lowercased() == "mode=quic" }) {
+            throw ProxyLinkError.unsupportedShadowsocksPlugin("v2ray-plugin mode=quic")
+        }
+        server.shadowsocksPlugin = coreName
+        server.shadowsocksPluginOptions = options.isEmpty ? nil : String(options)
+    }
+
     // MARK: - Общие параметры в стиле V2Ray
+
+    /// Применяет параметры, зависящие от возможностей ядра (транспорт, TLS, flow, плагины).
+    ///
+    /// Ограничение ядра не отбрасывает сервер: он остаётся в списке с `incompatibility`
+    /// и базовыми полями, а частично применённые настройки не сохраняются. Ошибки самой
+    /// ссылки (битый ключ REALITY и т. п.) пробрасываются дальше.
+    private static func applyCoreFeatures(
+        to server: inout ServerConfiguration,
+        _ body: (inout ServerConfiguration) throws -> Void
+    ) throws {
+        var candidate = server
+        do {
+            try body(&candidate)
+            server = candidate
+        } catch let error as ProxyLinkError where error.isCoreLimitation {
+            server.incompatibility = error
+        }
+    }
+
+    /// Проверяет gRPC `authority` (Xray). В sing-box 1.14.4 без тега `with_grpc` используется
+    /// gRPC lite, который всегда отправляет `:authority` = SNI (или адрес сервера без TLS) с портом;
+    /// отдельной настройки нет. Совпадающий authority применяется как есть, отличающийся — ограничение ядра.
+    private static func applyGRPCAuthority(from query: inout [String: String], to server: ServerConfiguration) throws {
+        guard let authority = query.removeValue(forKey: "authority")?.trimmingCharacters(in: .whitespaces),
+              !authority.isEmpty else { return }
+        guard case .grpc = server.transport else { return } // вне gRPC параметр ничего не значит
+        let effective = (server.tls?.serverName ?? server.host).lowercased()
+        let requested = stripPort(authority, port: server.port).lowercased()
+        guard requested == effective || requested == "[\(effective)]" else {
+            throw ProxyLinkError.unsupportedGRPCAuthority(authority)
+        }
+    }
+
+    /// Убирает из authority порт сервера (`host:443` → `host`).
+    private static func stripPort(_ authority: String, port: Int) -> String {
+        let suffix = ":\(port)"
+        return authority.hasSuffix(suffix) ? String(authority.dropLast(suffix.count)) : authority
+    }
 
     /// Извлекает из query параметры транспорта (`type`, `host`, `path`, `headerType`, ...) и удаляет их.
     ///
-    /// Неподдерживаемые, но безвредные параметры дописываются в `ignored`;
-    /// неподдерживаемый транспорт или маскировка заголовков — ошибка.
+    /// Пустые значения необязательных параметров равны их отсутствию. Неподдерживаемые, но
+    /// безвредные параметры дописываются в `ignored`; транспорт или маскировка заголовков,
+    /// которых нет в ядре (XHTTP/SplitHTTP, QUIC, mKCP, TCP `headerType=http`), — ограничение ядра,
+    /// другой транспорт вместо них не подставляется.
     private static func transport(from query: inout [String: String], ignored: inout [String]) throws -> TransportSettings {
         let type = (query.removeValue(forKey: "type") ?? "tcp").lowercased()
         let host = query.removeValue(forKey: "host").flatMap { $0.isEmpty ? nil : $0 }
         let path = query.removeValue(forKey: "path").map { $0.isEmpty ? "/" : $0 }
-        let headerType = query.removeValue(forKey: "headerType")?.lowercased()
+        let headerType = query.removeValue(forKey: "headerType").flatMap { $0.isEmpty ? nil : $0.lowercased() }
 
         switch type {
         case "tcp", "raw", "":
@@ -350,11 +444,13 @@ enum ProxyLinkParser {
             }
             return .webSocket(path: resolvedPath, host: host, maxEarlyData: earlyData)
         case "grpc", "gun":
-            let serviceName = query.removeValue(forKey: "serviceName") ?? path.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "/")) } ?? ""
-            if let mode = query.removeValue(forKey: "mode"), mode != "gun" {
-                ignored.append("mode=\(mode)")
+            let serviceName = query.removeValue(forKey: "serviceName").flatMap { $0.isEmpty ? nil : $0 }
+                ?? path.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "/")) } ?? ""
+            // multi-сервер Xray принимает и обычный gun-поток, поэтому mode=multi безвреден.
+            if let mode = query.removeValue(forKey: "mode"), !mode.isEmpty, mode != "gun" {
+                ignored.append("mode")
             }
-            query.removeValue(forKey: "authority").map { ignored.append("authority=\($0)") }
+            // `authority` проверяется после TLS в `applyGRPCAuthority`.
             return .grpc(serviceName: serviceName)
         case "http", "h2":
             let hosts = host.map { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } } ?? []
@@ -385,12 +481,12 @@ enum ProxyLinkParser {
         // Проверка сертификата никогда не отключается: вместо этого сообщаем о параметре.
         for key in ["allowInsecure", "insecure", "allowinsecure"] {
             if let value = query.removeValue(forKey: key), value == "1" || value.lowercased() == "true" {
-                ignored.append("\(key)=\(value)")
+                ignored.append(key)
             }
         }
 
         if let fp = fingerprint, !supportedFingerprints.contains(fp) {
-            ignored.append("fp=\(fp)")
+            ignored.append("fp")
             fingerprint = "chrome"
         }
 
@@ -403,7 +499,7 @@ enum ProxyLinkParser {
             guard let publicKey, isValidRealityPublicKey(publicKey) else { throw ProxyLinkError.invalidRealityPublicKey }
             guard isValidShortID(shortID) else { throw ProxyLinkError.invalidRealityShortID }
             if let spiderX, !spiderX.isEmpty, spiderX != "/" {
-                ignored.append("spx=\(spiderX)")
+                ignored.append("spx")
             }
             // REALITY в sing-box требует uTLS; chrome совпадает со значением по умолчанию в Xray.
             return TLSSettings(
@@ -417,12 +513,12 @@ enum ProxyLinkParser {
         }
     }
 
-    /// Оставшиеся (неприменённые) параметры в виде отсортированных строк `key=value`,
-    /// без чисто информационных ключей и пустых значений.
+    /// Имена оставшихся (неприменённых) параметров, отсортированные, без чисто информационных
+    /// ключей и пустых значений. Значения не сохраняются: в них могут быть токены.
     private static func remainingParameters(_ query: [String: String]) -> [String] {
         query
             .filter { !informationalKeys.contains($0.key) && !$0.value.isEmpty }
-            .map { "\($0.key)=\($0.value)" }
+            .map(\.key)
             .sorted()
     }
 

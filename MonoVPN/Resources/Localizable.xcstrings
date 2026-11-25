@@ -23,6 +23,72 @@
         }
       }
     },
+    "diagnostics.ignored %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не применены параметры: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.open %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диагностика импорта: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.section.ignored %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Частично применены: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.section.skipped %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не распознаны: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.section.unsupported %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не поддерживаются ядром: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диагностика импорта"
+          }
+        }
+      }
+    },
     "error.input.empty": {
       "extractionState": "manual",
       "localizations": {
@@ -162,6 +228,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Flow «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedGRPCAuthority %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gRPC authority «%@» отличается от SNI — в sing-box их нельзя задать раздельно"
           }
         }
       }
@@ -584,17 +661,6 @@
         }
       }
     },
-    "servers.ignoredParameters %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не применено: %@"
-          }
-        }
-      }
-    },
     "servers.refresh": {
       "extractionState": "manual",
       "localizations": {
@@ -606,17 +672,6 @@
         }
       }
     },
-    "servers.skipped %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пропущено записей: %lld"
-          }
-        }
-      }
-    },
     "servers.title": {
       "extractionState": "manual",
       "localizations": {
@@ -624,6 +679,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Серверы"
+          }
+        }
+      }
+    },
+    "servers.unsupported %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Не поддерживается"
           }
         }
       }

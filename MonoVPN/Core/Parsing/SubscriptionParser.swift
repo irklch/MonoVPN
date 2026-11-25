@@ -6,7 +6,7 @@ enum SubscriptionParseError: LocalizedError, Equatable {
     case empty
     /// Формат не поддерживается (JSON, Clash YAML, HTML и т. п.); в значении — название формата.
     case unsupportedFormat(String)
-    /// Ни одна ссылка не подошла; в значении — причины по каждой записи.
+    /// Ни одна ссылка не распознана; в значении — причины по каждой записи.
     case noSupportedServers([ParseIssue])
 
     /// Локализованный текст ошибки; для `noSupportedServers` показывает причину первой записи.
@@ -26,11 +26,12 @@ enum SubscriptionParseError: LocalizedError, Equatable {
     }
 }
 
-/// Результат разбора подписки: принятые серверы и пропущенные записи.
+/// Результат разбора подписки: распознанные серверы и пропущенные записи.
 struct SubscriptionParseResult: Equatable {
-    /// Серверы без дубликатов, в порядке появления.
+    /// Все распознанные серверы без дубликатов, в порядке появления, — и поддерживаемые,
+    /// и неподдерживаемые ядром (`ServerConfiguration.isSupported`). Ограничения количества нет.
     var servers: [ServerConfiguration]
-    /// Записи, которые не удалось импортировать, с причинами.
+    /// Записи, которые не удалось распознать (битые ссылки, неизвестные схемы), с причинами.
     var issues: [ParseIssue]
 }
 
@@ -51,8 +52,9 @@ enum SubscriptionParser {
 
     /// Разбирает текст подписки: при необходимости декодирует Base64, затем разбирает каждую ссылку.
     ///
-    /// Неподдерживаемые и битые ссылки попадают в `issues`, дубликаты по `id` отбрасываются.
-    /// Если не принят ни один сервер — бросает `noSupportedServers`.
+    /// Битые ссылки и неизвестные схемы попадают в `issues`; серверы, которые ядро не умеет
+    /// запускать, остаются в `servers` с `incompatibility`. Дубликаты по `id` (одинаковые ссылки)
+    /// отбрасываются. Если не распознан ни один сервер — бросает `noSupportedServers`.
     static func parse(_ text: String) throws -> SubscriptionParseResult {
         let body = text.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{FEFF}")))
         guard !body.isEmpty else { throw SubscriptionParseError.empty }

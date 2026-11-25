@@ -14,7 +14,8 @@ struct Subscription: Codable, Hashable, Sendable {
     var source: Source
     /// Серверы, полученные при последнем импорте.
     var servers: [ServerConfiguration]
-    /// Записи, пропущенные при последнем успешном импорте.
+    /// Записи, пропущенные при последнем успешном импорте (битые ссылки, неизвестные схемы).
+    /// Показываются только в диагностике импорта.
     var issues: [ParseIssue]
     /// Дата последнего успешного импорта или обновления.
     var lastUpdated: Date
@@ -53,19 +54,21 @@ struct AppState: Codable, Equatable, Sendable {
     /// ID выбранного пользователем сервера.
     var selectedServerID: String?
 
-    /// Заменяет подписку, сохраняя выбранный пользователем сервер, если он всё ещё есть;
-    /// иначе выбранным становится первый сервер.
+    /// Заменяет подписку, сохраняя выбранный пользователем сервер, если он всё ещё есть
+    /// и поддерживается; иначе выбранным становится первый поддерживаемый сервер.
     mutating func replaceSubscription(with subscription: Subscription) {
         self.subscription = subscription
-        if let id = selectedServerID, subscription.servers.contains(where: { $0.id == id }) {
+        let supported = subscription.servers.filter(\.isSupported)
+        if let id = selectedServerID, supported.contains(where: { $0.id == id }) {
             return
         }
-        selectedServerID = subscription.servers.first?.id
+        selectedServerID = supported.first?.id
     }
 
-    /// Выбранный сервер; если ID не найден — первый сервер подписки.
+    /// Выбранный сервер; если ID не найден — первый поддерживаемый сервер подписки.
+    /// Неподдерживаемый сервер выбранным не бывает.
     var selectedServer: ServerConfiguration? {
-        guard let servers = subscription?.servers else { return nil }
+        guard let servers = subscription?.servers.filter(\.isSupported) else { return nil }
         return servers.first { $0.id == selectedServerID } ?? servers.first
     }
 }

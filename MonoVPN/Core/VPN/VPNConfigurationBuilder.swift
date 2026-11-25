@@ -89,8 +89,12 @@ enum VPNConfigurationBuilder {
 
     /// Собирает объект outbound (исходящее соединение через прокси) для протокола сервера.
     ///
-    /// Бросает `ProxyLinkError.malformed`, если не хватает UUID, пароля или шифра.
+    /// Бросает `ProxyLinkError.malformed`, если не хватает UUID, пароля или шифра,
+    /// и причину несовместимости, если сервер не поддерживается ядром.
     static func outbound(for server: ServerConfiguration) throws -> [String: Any] {
+        if let incompatibility = server.incompatibility {
+            throw incompatibility
+        }
         var outbound: [String: Any] = [
             "tag": Tag.proxy,
             "server": server.host,
@@ -118,6 +122,12 @@ enum VPNConfigurationBuilder {
             outbound["type"] = "shadowsocks"
             outbound["method"] = try required(server.method)
             outbound["password"] = try required(server.password)
+            if let plugin = server.shadowsocksPlugin {
+                outbound["plugin"] = plugin
+                if let options = server.shadowsocksPluginOptions {
+                    outbound["plugin_opts"] = options
+                }
+            }
         }
 
         if let tls = server.tls {

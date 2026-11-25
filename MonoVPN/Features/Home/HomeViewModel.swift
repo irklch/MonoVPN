@@ -165,7 +165,7 @@ final class HomeViewModel {
     /// Если старый туннель не удалось остановить, выбор не меняется: выбранный сервер
     /// всегда совпадает с тем, что реально запущено.
     func select(_ server: ServerConfiguration) async {
-        guard server.id != selectedServer?.id else { return }
+        guard server.isSupported, server.id != selectedServer?.id else { return }
         await switchTunnel {
             appState.selectedServerID = server.id
         }
