@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 /// Main screen state: subscription, selected server and the VPN connection.
 ///
@@ -34,6 +35,8 @@ final class HomeViewModel {
         self.store = store
         self.service = service
         appState = store.load()
+        // Existing installs: make sure the widget finds the selected server's configuration.
+        syncTunnelConfiguration()
     }
 
     // MARK: - Derived state
@@ -64,6 +67,23 @@ final class HomeViewModel {
 
     func sceneDidBecomeActive() async {
         await vpn.load()
+    }
+
+    /// Executes a command delivered by the widget through `monovpn://` (used when the
+    /// system VPN configuration does not exist yet and must be created in the app).
+    /// Commands are idempotent: a repeated delivery never toggles the VPN back.
+    func handle(_ command: TunnelCommand) async {
+        if !vpn.isLoaded {
+            await vpn.load()
+        }
+        switch command {
+        case .connect:
+            guard selectedServer != nil, !vpn.state.isActive, !isBusy else { return }
+            await toggleConnection()
+        case .disconnect:
+            guard vpn.state.isActive, !isBusy else { return }
+            await toggleConnection()
+        }
     }
 
     // MARK: - Connection
@@ -118,6 +138,7 @@ final class HomeViewModel {
         let wasActive = vpn.state.isActive
         appState.selectedServerID = server.id
         persist()
+        syncTunnelConfiguration()
         if wasActive {
             await restart(with: server)
         }
@@ -174,8 +195,10 @@ final class HomeViewModel {
 
     /// Disconnects the VPN (if needed) and removes the subscription and all secrets.
     func deleteSubscription() async {
+        // Stop unconditionally (even while another action is in flight): the
+        // configuration must not outlive the subscription it came from.
         if vpn.state != .disconnected, vpn.state != .invalid {
-            await disconnect()
+            await vpn.disconnect()
         }
         do {
             try store.removeAll()
@@ -185,22 +208,35 @@ final class HomeViewModel {
         } catch {
             subscriptionError = error.localizedDescription
         }
+        WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
     }
 
     private func apply(_ subscription: Subscription) async {
         let previousServer = selectedServer
-        appState.subscription = subscription
-        if let id = appState.selectedServerID, subscription.servers.contains(where: { $0.id == id }) {
-            // Keep the user's choice.
-        } else {
-            appState.selectedServerID = subscription.servers.first?.id
-        }
+        appState.replaceSubscription(with: subscription)
         persist()
+        syncTunnelConfiguration()
 
         // The running tunnel uses the old parameters: restart if they changed.
         if vpn.state.isActive, let server = selectedServer, server != previousServer {
             await restart(with: server)
         }
+    }
+
+    /// Keeps the Keychain copy of the selected server's sing-box configuration current.
+    /// The widget starts the tunnel with exactly this configuration and never picks a
+    /// server itself; without a selected server the item is removed ("Нет сервера").
+    private func syncTunnelConfiguration() {
+        do {
+            if let server = selectedServer {
+                try store.saveTunnelConfiguration(VPNConfigurationBuilder.build(for: server))
+            } else {
+                try store.removeTunnelConfiguration()
+            }
+        } catch {
+            subscriptionError = String(localized: "error.storage \(error.localizedDescription)")
+        }
+        WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
     }
 
     private func persist() {

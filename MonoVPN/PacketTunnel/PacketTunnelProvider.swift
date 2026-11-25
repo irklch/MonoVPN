@@ -2,6 +2,7 @@ import Foundation
 import Libbox
 import NetworkExtension
 import os
+import WidgetKit
 
 /// System VPN tunnel backed by the sing-box core (Libbox).
 ///
@@ -26,11 +27,13 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         do {
             try startCore()
             Self.logger.info("Tunnel started")
+            reloadWidget()
         } catch {
             let message = (error as NSError).localizedDescription
             try? storage.set(message, for: .lastTunnelError)
             Self.logger.error("Tunnel start failed")
             stopCore()
+            reloadWidget()
             throw error
         }
     }
@@ -38,6 +41,13 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     override func stopTunnel(with reason: NEProviderStopReason) async {
         Self.logger.info("Stopping tunnel, reason \(reason.rawValue, privacy: .public)")
         stopCore()
+        reloadWidget()
+    }
+
+    /// Lets the Home Screen widget pick up the new status, also when the VPN is
+    /// toggled from Settings or restarted by the system while the app is closed.
+    private func reloadWidget() {
+        WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
     }
 
     // MARK: - Core lifecycle

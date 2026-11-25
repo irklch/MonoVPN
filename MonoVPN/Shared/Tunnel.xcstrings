@@ -1,6 +1,61 @@
 {
   "sourceLanguage": "ru",
   "strings": {
+    "error.vpn.configuration %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось сохранить конфигурацию VPN: %@"
+          }
+        }
+      }
+    },
+    "error.vpn.permissionDenied": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет разрешения на добавление VPN-конфигурации. Разрешите его, чтобы подключиться."
+          }
+        }
+      }
+    },
+    "error.vpn.start %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить VPN: %@"
+          }
+        }
+      }
+    },
+    "error.vpn.timeout": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN не ответил вовремя"
+          }
+        }
+      }
+    },
+    "error.vpn.tunnel %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение прервано: %@"
+          }
+        }
+      }
+    },
     "tunnel.error.core %@": {
       "extractionState": "manual",
       "localizations": {

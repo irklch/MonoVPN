@@ -10,6 +10,7 @@
 MONO_DISPLAY_NAME = Mono VPN
 MONO_BUNDLE_ID = com.irklch.monovpn
 MONO_TUNNEL_BUNDLE_ID = $(MONO_BUNDLE_ID).PacketTunnel
+MONO_WIDGET_BUNDLE_ID = $(MONO_BUNDLE_ID).Widget
 MONO_APP_GROUP = group.com.irklch.monovpn
 
 MARKETING_VERSION = 1.0.0

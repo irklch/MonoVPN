@@ -46,6 +46,16 @@ struct AppState: Codable, Equatable, Sendable {
     var subscription: Subscription?
     var selectedServerID: String?
 
+    /// Replaces the subscription, keeping the user's server if it is still present;
+    /// otherwise the first server becomes selected.
+    mutating func replaceSubscription(with subscription: Subscription) {
+        self.subscription = subscription
+        if let id = selectedServerID, subscription.servers.contains(where: { $0.id == id }) {
+            return
+        }
+        selectedServerID = subscription.servers.first?.id
+    }
+
     var selectedServer: ServerConfiguration? {
         guard let servers = subscription?.servers else { return nil }
         return servers.first { $0.id == selectedServerID } ?? servers.first

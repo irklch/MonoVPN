@@ -32,9 +32,14 @@ struct AppStateStore: Sendable {
         try storage.set(json, for: .tunnelConfiguration)
     }
 
+    func removeTunnelConfiguration() throws {
+        try storage.remove(.tunnelConfiguration)
+    }
+
     func removeAll() throws {
         try storage.remove(.appState)
         try storage.remove(.tunnelConfiguration)
+        try storage.remove(.lastTunnelError)
     }
 }
 

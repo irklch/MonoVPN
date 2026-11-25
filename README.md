@@ -7,7 +7,7 @@
 - VPN Core: [sing-box](https://github.com/SagerNet/sing-box) **v1.14.4** (Libbox, собирается локально в `Libbox.xcframework`).
 - Сторонних Swift-зависимостей нет.
 
-> **Статус.** Код собирается для устройства (arm64, без подписи) и симулятора, unit-тесты проходят, конфигурации sing-box проходят `sing-box check`. **Реальное VPN-подключение не проверено:** для этого нужны платный Apple Developer аккаунт и физический iPhone (см. «Что проверить на iPhone»). До такой проверки VPN нельзя считать работающим.
+> **Статус.** Код всех targets (приложение, Packet Tunnel, виджет) собирается для устройства (arm64, без подписи) и симулятора, unit-тесты проходят, конфигурации sing-box проходят `sing-box check`. **Реальное VPN-подключение и работа виджета не проверены:** для этого нужны платный Apple Developer аккаунт и физический iPhone (см. «Что проверить на iPhone»). До такой проверки VPN нельзя считать работающим.
 
 ---
 
@@ -21,10 +21,13 @@
 6. [Internal TestFlight](#internal-testflight)
 7. [Подписки и протоколы](#подписки-и-протоколы)
 8. [Маршрутизация, DNS и утечки](#маршрутизация-dns-и-утечки)
-9. [Лицензионные требования](#лицензионные-требования)
-10. [Известные ограничения](#известные-ограничения)
-11. [Ограничения Apple для VPN-приложений](#ограничения-apple-для-vpn-приложений)
-12. [Чек-лист ручного тестирования VPN](#чек-лист-ручного-тестирования-vpn)
+9. [Виджет](#виджет)
+10. [Иконка приложения](#иконка-приложения)
+11. [Результаты технического ревью](#результаты-технического-ревью)
+12. [Лицензионные требования](#лицензионные-требования)
+13. [Известные ограничения](#известные-ограничения)
+14. [Ограничения Apple для VPN-приложений](#ограничения-apple-для-vpn-приложений)
+15. [Чек-лист ручного тестирования VPN](#чек-лист-ручного-тестирования-vpn)
 
 ---
 
@@ -48,8 +51,9 @@ MonoVPN/
 │   └── Privacy/             PrivacyNoticeView (перед первым подключением)
 ├── DesignSystem/            Палитра, стили кнопок, общие компоненты
 ├── Resources/               Assets.xcassets, Localizable.xcstrings
-├── Shared/                  Код и строки для приложения и extension: AppIdentifiers, SecureStorage, Tunnel.xcstrings
+├── Shared/                  Код и строки для приложения и extensions: AppIdentifiers, SecureStorage, TunnelController, WidgetCommand, Tunnel.xcstrings
 ├── PacketTunnel/            PacketTunnelProvider, TunnelPlatformInterface (мост Libbox ↔ NetworkExtension)
+├── Widget/                  Виджет Home Screen и App Intent
 ├── Config/                  Identifiers.xcconfig, Info.plist, entitlements
 ├── Scripts/                 build-libbox.sh
 └── Tests/                   Unit-тесты (Swift Testing)
@@ -61,6 +65,7 @@ MonoVPN/
 |---|---|---|
 | `MonoVPN` | приложение | App, Core, Models, Features, DesignSystem, Resources, Shared |
 | `PacketTunnel` | Packet Tunnel Provider extension (встраивается в приложение) | PacketTunnel, Shared + Libbox.xcframework, NetworkExtension, UIKit, libresolv |
+| `MonoVPNWidget` | Widget Extension (встраивается в приложение) | Widget, Shared |
 | `MonoVPNTests` | unit-тесты (host — приложение) | Tests |
 
 ### Ответственность компонентов
@@ -164,11 +169,12 @@ PLATFORMS=ios MonoVPN/Scripts/build-libbox.sh
 | Display Name | Mono VPN |
 | App Bundle ID | `com.irklch.monovpn` |
 | Packet Tunnel Bundle ID | `com.irklch.monovpn.PacketTunnel` |
+| Widget Bundle ID | `com.irklch.monovpn.Widget` |
 | App Group | `group.com.irklch.monovpn` |
 | Keychain Sharing group | `$(AppIdentifierPrefix)com.irklch.monovpn.shared` |
 | Signing | Automatic, `DEVELOPMENT_TEAM` пуст |
 
-Info.plist обоих targets получают значения из xcconfig, Swift-код читает их из Info.plist (`AppIdentifiers`). Если идентификатор занят — поменяйте его только в xcconfig.
+Info.plist всех targets получают значения из xcconfig, Swift-код читает их из Info.plist (`AppIdentifiers`). Если идентификатор занят — поменяйте его только в xcconfig.
 
 ### Entitlements
 
@@ -183,11 +189,13 @@ Info.plist обоих targets получают значения из xcconfig, S
 <array><string>$(AppIdentifierPrefix)$(MONO_BUNDLE_ID).shared</string></array>
 ```
 
+`MonoVPN/Config/Widget.entitlements` — те же App Group и Keychain group, без Network Extensions (см. «Виджет»).
+
 ### После активации личного Apple Developer Program
 
 1. Xcode → Settings → Accounts: добавьте **свой** Apple ID и выберите **личную** команду (не команду работодателя).
-2. Укажите Team ID: либо `DEVELOPMENT_TEAM = XXXXXXXXXX` в `Identifiers.xcconfig`, либо в Xcode → target → Signing & Capabilities для **обоих** targets (`MonoVPN` и `PacketTunnel`).
-3. При Automatic Signing Xcode сам зарегистрирует App ID для обоих Bundle ID, App Group и Keychain Sharing group в вашей команде. Проверьте на вкладке Signing & Capabilities обоих targets, что есть:
+2. Укажите Team ID: либо `DEVELOPMENT_TEAM = XXXXXXXXXX` в `Identifiers.xcconfig`, либо в Xcode → target → Signing & Capabilities для **всех трёх** targets (`MonoVPN`, `PacketTunnel`, `MonoVPNWidget`).
+3. При Automatic Signing Xcode сам зарегистрирует App ID для всех Bundle ID, App Group и Keychain Sharing group в вашей команде. Проверьте на вкладке Signing & Capabilities, что есть (у виджета — без Network Extensions):
    - **Network Extensions** → Packet Tunnel;
    - **App Groups** → `group.com.irklch.monovpn`;
    - **Keychain Sharing** → `com.irklch.monovpn.shared`.
@@ -215,7 +223,6 @@ Packet Tunnel **не работает в симуляторе** — VPN пров
 Выполняется владельцем вручную — загрузки в App Store Connect из этого проекта не производились.
 
 1. Перед загрузкой:
-   - добавьте иконку приложения 1024×1024 в `Resources/Assets.xcassets/AppIcon` — **без иконки App Store Connect отклонит сборку** (кастомная иконка не входила в MVP);
    - решите лицензионный вопрос (см. ниже) — бинарник, переданный тестировщикам, уже является распространением GPL-кода;
    - увеличьте `CURRENT_PROJECT_VERSION` в `Identifiers.xcconfig` для каждой новой сборки.
 2. App Store Connect → My Apps → «+» → New App с Bundle ID `com.irklch.monovpn`.
@@ -274,6 +281,107 @@ Packet Tunnel **не работает в симуляторе** — VPN пров
 
 ---
 
+## Виджет
+
+Small-виджет на Home Screen: кнопка питания по центру и статус под ней. Фон `#171717`, монохромная иконка `power`, без градиентов и акцентных цветов. В режимах оформления Home Screen (тёмный / тонированный / StandBy) кнопка помечена `widgetAccentable()`, цвета зависят от `widgetRenderingMode`.
+
+### Архитектура
+
+```
+MonoVPN/Widget/ConnectionWidget.swift    WidgetBundle, ConnectionWidget, ConnectionProvider, ToggleVPNIntent, ConnectionWidgetView
+MonoVPN/Widget/Localizable.xcstrings     строки виджета (ru)
+MonoVPN/Shared/TunnelController.swift    общие операции NetworkExtension (app + виджет): load / install / start / stop / waitForStatus
+MonoVPN/Shared/WidgetCommand.swift       TunnelCommand (connect / disconnect), WidgetVPNState, WidgetCommandRunner
+```
+
+Второго VPN-менеджера нет: `VPNManager` (приложение) и App Intent виджета вызывают один и тот же `TunnelController`. `HomeViewModel` и `VPNManager` в виджет не входят — они `@MainActor`, зависят от UI и в процессе виджета не существуют.
+
+| Target | Тип | Папки |
+|---|---|---|
+| `MonoVPNWidget` | Widget Extension (встраивается в приложение), Bundle ID `com.irklch.monovpn.Widget` | Widget, Shared |
+
+### Как это работает
+
+1. **Статус.** `ConnectionProvider.getTimeline` при каждой перезагрузке читает реальный `NEVPNStatus` (`TunnelController.loadManager()`), наличие конфигурации выбранного сервера и последнюю ошибку из Keychain → `WidgetVPNState`: «Нет сервера», «Отключено», «Подключение…», «Подключено», «Отключение…», «Ошибка подключения». Ничего не хранится и не угадывается — «Подключено» показывается только при `NEVPNStatus.connected`.
+2. **Нажатие.** Кнопка — `Button(intent: ToggleVPNIntent(connect:))`. Направление (подключить / отключить) задаётся при отрисовке по текущему статусу. В iOS 17 `perform()` интерактивного виджета выполняется **в процессе Widget Extension**, без открытия приложения.
+3. **Выполнение.** `WidgetCommandRunner.perform` заново читает статус и через `TunnelCommand.action` решает, что делать: `connect` запускает туннель только из Disconnected/Invalid, `disconnect` останавливает только Connecting/Connected/Reasserting. Повторное или двойное нажатие ничего не переключает обратно.
+4. **Запуск.** `startVPNTunnel()` → система запускает Packet Tunnel (отдельный процесс), который берёт конфигурацию из общего Keychain. Intent ждёт подтверждения системы (`NEVPNStatusDidChange`, не дольше 10 с) и запрашивает перезагрузку виджета.
+5. **Синхронизация.** `WidgetCenter.reloadTimelines(ofKind:)` вызывают: App Intent после выполнения, `VPNManager` при каждой смене статуса, `HomeViewModel` при смене сервера/подписки, Packet Tunnel при старте, ошибке и остановке (то есть и при переключении из «Настроек», когда приложение закрыто). Постоянного опроса нет; только в переходных состояниях таймлайн просит одну повторную перезагрузку через 5 с. Приложение при открытии перечитывает статус из системы, поэтому VPN, включённый из виджета, отображается корректно.
+
+### Последний выбранный сервер
+
+Приложение держит в Keychain (`tunnel-configuration.v1`, общая access group) готовую конфигурацию sing-box **выбранного** сервера и обновляет её при выборе сервера, импорте/обновлении подписки и при запуске приложения; при удалении подписки элемент удаляется. Виджет сервер не выбирает: есть этот элемент — подключается именно с ним, нет — показывает «Нет сервера» и не подключается. Packet Tunnel читает тот же элемент.
+
+### Ограничения фонового исполнения
+
+- **Первое подключение — только из приложения.** Создание VPN-конфигурации показывает системный запрос разрешения, его нельзя показать из виджета. Пока конфигурации нет (`needsSetup`), нажатие на виджет открывает приложение через `widgetURL` `monovpn://connect` (документированный механизм; Small-виджет поддерживает один URL на весь виджет). Приложение выполняет идемпотентную команду `connect` (при необходимости сначала экран конфиденциальности). Если VPN уже подключён, команда ничего не делает.
+- После того как конфигурация создана, подключение и отключение из виджета выполняются **без открытия приложения**. Тот же приём (`NETunnelProviderManager` из Widget Extension) использует официальный клиент sing-box-for-apple в своём Control-виджете; на устройстве в рамках этого проекта он **не проверен**.
+- Если на устройстве `loadAllFromPreferences` в процессе виджета вернёт ошибку, виджет увидит «нет конфигурации» и следующее нажатие откроет приложение — ложного «Подключено» не будет.
+- Время выполнения App Intent ограничено системой; ожидание подтверждения — максимум 10 с.
+- WidgetKit не гарантирует мгновенную перерисовку: возможна задержка в несколько секунд, у перезагрузок есть дневной бюджет.
+- Недокументированные способы запуска приложения и обхода фоновых ограничений не используются.
+
+### Подключение Widget Extension
+
+Target уже есть в проекте и встраивается в приложение (Embed Foundation Extensions). После выбора своей команды (см. «Signing & Capabilities») проверьте у `MonoVPNWidget`:
+
+- **App Groups** → `group.com.irklch.monovpn`;
+- **Keychain Sharing** → `com.irklch.monovpn.shared` (виджету нужен доступ к конфигурации выбранного сервера и к ошибке туннеля);
+- Network Extensions capability виджету не добавлена (как у sing-box-for-apple). Если на устройстве управление из виджета не заработает, первым делом добавьте ему Network Extensions → Packet Tunnel.
+
+### Как добавить виджет на Home Screen
+
+1. Установите приложение, добавьте подписку и **один раз подключитесь из приложения** (разрешите добавление VPN-конфигурации).
+2. Долгое нажатие на пустом месте Home Screen → «Изменить» → «Добавить виджет».
+3. Найдите Mono VPN, выберите маленький виджет → «Добавить виджет».
+
+### Чек-лист тестирования виджета
+
+- [ ] Без подписки: «Нет сервера», нажатие на кнопку не подключает.
+- [ ] Подписка есть, VPN ни разу не подключался: «Отключено», нажатие открывает приложение и запускает подключение (после экрана конфиденциальности и системного запроса).
+- [ ] Приложение закрыто (выгружено из переключателя): нажатие → «Подключение…» → «Подключено», приложение **не** открывается.
+- [ ] Повторное нажатие → «Отключение…» → «Отключено».
+- [ ] Двойное быстрое нажатие не переключает VPN обратно.
+- [ ] Подключено из приложения → виджет показывает «Подключено» и отключает VPN.
+- [ ] Подключено из виджета → приложение при открытии показывает «Подключено» и верное время.
+- [ ] Сменить сервер в приложении → подключение из виджета идёт к новому серверу.
+- [ ] Неверный сервер → «Ошибка подключения», нет ложного «Подключено».
+- [ ] VPN включён/выключен в «Настройки → VPN» → виджет обновился.
+- [ ] Удаление подписки → «Нет сервера».
+- [ ] Тёмный и тонированный режимы Home Screen, StandBy — кнопка и текст читаемы.
+- [ ] Память и время ответа виджета (Xcode → Debug → Attach to Process → `MonoVPNWidget`).
+
+---
+
+## Иконка приложения
+
+- **Источник:** утверждённый фрейм «AppIcon — 1024 × 1024» (node `1:6`) в Figma-файле `RZskmuzbaj8GxhoNVZjLU0`. Экспортирован через Figma MCP в PNG 1024 × 1024 как есть: фон `#171717`, белая строчная «m» и точка — так в утверждённом макете.
+- Альфа-канал из экспорта удалён без изменения пикселей (все пиксели исходника непрозрачны), потому что App Store не принимает иконку с альфа-каналом. Углы не скруглены — это делает iOS.
+- Файл: `MonoVPN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` (единственный размер, остальные Xcode генерирует сам). Назначена target `MonoVPN` через `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`; в собранном приложении есть `CFBundleIconName = AppIcon`.
+
+**Замена иконки:** экспортируйте новый фрейм 1024 × 1024 в PNG без прозрачности (sRGB, без скругления) и замените `AppIcon-1024.png` с тем же именем, `Contents.json` менять не нужно. Если в экспорте есть альфа-канал, уберите его (например, экспортом в JPEG и обратно в PNG или в редакторе) — иначе загрузка в App Store Connect завершится ошибкой.
+
+---
+
+## Результаты технического ревью
+
+| # | Что проверено | Результат |
+|---|---|---|
+| 1 | Signing & Capabilities трёх targets | App: NE + App Groups + Keychain Sharing; PacketTunnel: то же; Widget: App Groups + Keychain Sharing. Team не указан |
+| 2 | Раскрытие App Group и Keychain group | Значения из `Identifiers.xcconfig` попадают в entitlements и Info.plist. `$(AppIdentifierPrefix)` существует только в подписанной сборке; в неподписанной используется keychain самого процесса (общий доступ для VPN там и не нужен — NE без подписи не работает) |
+| 3 | Совместный доступ к Keychain | Одна access group `<TEAM>.com.irklch.monovpn.shared` у всех трёх targets, `AfterFirstUnlockThisDeviceOnly` |
+| 4 | Последний выбранный сервер | **Исправлено:** конфигурация выбранного сервера раньше попадала в Keychain только при подключении; теперь синхронизируется при выборе, обновлении подписки и запуске — виджет всегда стартует выбранный сервер |
+| 5 | Восстановление `NETunnelProviderManager` | Поиск по `providerBundleIdentifier`. **Исправлено:** изменение статуса до загрузки менеджера (например, VPN включили из виджета) теперь вызывает загрузку |
+| 6 | Конкурентные старт/стоп | Ожидание подтверждения отключения переведено с опроса каждые 200 мс на `NEVPNStatusDidChange`. **Исправлено:** удаление подписки могло не остановить VPN, если в этот момент выполнялось другое действие |
+| 7 | Смена сервера во время подключения | Остановка → ожидание `.disconnected` → запуск с новой конфигурацией |
+| 8 | Двойной запуск | В приложении `isPerformingAction` + блокировка в переходных состояниях; команды виджета идемпотентны |
+| 9 | Ошибки Packet Tunnel | Ошибка старта сохраняется в Keychain и показывается в приложении и виджете; туннель перезагружает виджет при ошибке |
+| 10 | Синхронизация виджета | Только `NEVPNStatus`, см. «Как это работает» |
+| 11 | Локализация в виджете | **Исправлено:** тексты ошибок VPN перенесены в общую таблицу `Tunnel.xcstrings`, иначе в виджете были бы видны ключи. У виджета свой `Localizable.xcstrings` |
+| 12 | Лицензия sing-box | Без изменений: GPL-3.0 остаётся блокером распространения (см. ниже). Логика виджета повторяет подход GPL-кода sing-box-for-apple |
+
+---
+
 ## Лицензионные требования
 
 **Это блокер для распространения, который должен решить владелец (желательно с юристом).**
@@ -300,8 +408,8 @@ Packet Tunnel **не работает в симуляторе** — VPN пров
 - Потребление памяти extension не измерено; лимит iOS для Packet Tunnel ~50 МБ.
 - Одна подписка; автоматического обновления по расписанию нет (только вручную).
 - Энергосбережение Libbox при выключенном экране (`pause`/`recordScreenState`) не подключено — туннель всегда активен.
-- Нет иконки приложения (требуется для загрузки в App Store Connect).
-- Английская локализация не добавлена: структура готова (String Catalog, `knownRegions` включает `en`), достаточно добавить переводы в `Localizable.xcstrings` и `Tunnel.xcstrings`.
+- Виджет не проверен на устройстве: управление VPN из процесса Widget Extension, время отклика, работа при закрытом приложении. Отображение иконки на SpringBoard визуально не проверялось (проверено наличие в сборке).
+- Английская локализация не добавлена: структура готова (String Catalog, `knownRegions` включает `en`), достаточно добавить переводы в `Resources/Localizable.xcstrings`, `Widget/Localizable.xcstrings` и `Shared/Tunnel.xcstrings`.
 - Ошибка старта туннеля передаётся в приложение через общий Keychain; текст ошибок ядра — на английском.
 
 ---

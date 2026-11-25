@@ -25,6 +25,9 @@ enum AppIdentifiers {
         return group
     }()
 
+    /// WidgetKit kind of the Home Screen connection widget.
+    static let widgetKind = "com.irklch.monovpn.widget.connection"
+
     /// Subsystem for `os.Logger`.
     static let logSubsystem = "com.irklch.monovpn"
 

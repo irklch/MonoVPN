@@ -1,69 +1,13 @@
 import Foundation
-import NetworkExtension
+@preconcurrency import NetworkExtension
 import Observation
 import os
-
-/// Connection state mirrored 1:1 from `NEVPNStatus`, the single source of truth.
-enum VPNConnectionState: Equatable, Sendable {
-    case invalid
-    case disconnected
-    case connecting
-    case connected
-    case reasserting
-    case disconnecting
-
-    init(_ status: NEVPNStatus) {
-        switch status {
-        case .invalid: self = .invalid
-        case .disconnected: self = .disconnected
-        case .connecting: self = .connecting
-        case .connected: self = .connected
-        case .reasserting: self = .reasserting
-        case .disconnecting: self = .disconnecting
-        @unknown default: self = .invalid
-        }
-    }
-
-    /// Tunnel is up or coming up: a new configuration requires a restart.
-    var isActive: Bool {
-        switch self {
-        case .connecting, .connected, .reasserting: true
-        default: false
-        }
-    }
-
-    var isTransitioning: Bool {
-        switch self {
-        case .connecting, .reasserting, .disconnecting: true
-        default: false
-        }
-    }
-}
-
-enum VPNError: LocalizedError, Equatable {
-    case permissionDenied
-    case configurationFailed(String)
-    case startFailed(String)
-    case tunnel(String)
-    case timeout
-
-    var errorDescription: String? {
-        switch self {
-        case .permissionDenied:
-            String(localized: "error.vpn.permissionDenied")
-        case let .configurationFailed(message):
-            String(localized: "error.vpn.configuration \(message)")
-        case let .startFailed(message):
-            String(localized: "error.vpn.start \(message)")
-        case let .tunnel(message):
-            String(localized: "error.vpn.tunnel \(message)")
-        case .timeout:
-            String(localized: "error.vpn.timeout")
-        }
-    }
-}
+import WidgetKit
 
 /// Owns the app's `NETunnelProviderManager` and publishes the system VPN status.
+///
+/// System operations are delegated to `TunnelController`, which the widget's App
+/// Intent uses as well; this class only adds observation for SwiftUI.
 @MainActor
 @Observable
 final class VPNManager {
@@ -102,10 +46,7 @@ final class VPNManager {
     /// (on launch and whenever the app returns to the foreground).
     func load() async {
         do {
-            let managers = try await NETunnelProviderManager.loadAllFromPreferences()
-            manager = managers.first { manager in
-                (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == AppIdentifiers.tunnelBundleID
-            }
+            manager = try await TunnelController.loadManager()
         } catch {
             logger.error("Failed to load VPN preferences: \(error.localizedDescription, privacy: .public)")
         }
@@ -116,8 +57,7 @@ final class VPNManager {
     /// Re-reads the status from the system (used when returning to the foreground).
     func refreshStatus() {
         guard let connection = manager?.connection else {
-            state = .disconnected
-            connectedDate = nil
+            update(.disconnected, connectedDate: nil)
             return
         }
         apply(connection)
@@ -133,27 +73,23 @@ final class VPNManager {
         userRequestedStop = false
         do {
             try storage.set(configuration, for: .tunnelConfiguration)
+            try? storage.remove(.lastTunnelError)
         } catch {
             throw VPNError.configurationFailed(error.localizedDescription)
         }
 
-        let manager = try await preparedManager()
-        do {
-            try manager.connection.startVPNTunnel()
-        } catch {
-            throw VPNError.startFailed(error.localizedDescription)
-        }
+        let manager = try await TunnelController.install(manager)
+        self.manager = manager
+        try await TunnelController.start(manager)
         apply(manager.connection)
     }
 
     /// Stops the tunnel and waits until the system reports `.disconnected`.
     func disconnect() async {
-        guard let connection = manager?.connection else { return }
+        guard let manager else { return }
         userRequestedStop = true
-        if connection.status != .disconnected, connection.status != .invalid {
-            connection.stopVPNTunnel()
-        }
-        _ = await waitForStatus(timeout: .seconds(15)) { $0 == .disconnected || $0 == .invalid }
+        await TunnelController.stop(manager)
+        refreshStatus()
     }
 
     /// Restarts the tunnel with a new configuration (server switch).
@@ -164,41 +100,10 @@ final class VPNManager {
 
     // MARK: - Private
 
-    /// Creates or updates the VPN configuration. The first save shows the system
-    /// "Add VPN Configuration" permission alert.
-    private func preparedManager() async throws -> NETunnelProviderManager {
-        let manager = self.manager ?? NETunnelProviderManager()
-        let proto = (manager.protocolConfiguration as? NETunnelProviderProtocol) ?? NETunnelProviderProtocol()
-        proto.providerBundleIdentifier = AppIdentifiers.tunnelBundleID
-        // Shown in Settings → VPN. Not a real address: the server lives in the Keychain.
-        proto.serverAddress = "Mono VPN"
-        proto.disconnectOnSleep = false
-        manager.protocolConfiguration = proto
-        manager.localizedDescription = "Mono VPN"
-        manager.isEnabled = true
-
-        do {
-            try await manager.saveToPreferences()
-            // Required after saving, otherwise the first start fails with a stale configuration.
-            try await manager.loadFromPreferences()
-        } catch {
-            let nsError = error as NSError
-            if nsError.domain == NEVPNErrorDomain, nsError.code == NEVPNError.configurationReadWriteFailed.rawValue {
-                // The user tapped "Don't Allow" in the system alert.
-                throw VPNError.permissionDenied
-            }
-            if nsError.domain == NEVPNErrorDomain, nsError.code == NEVPNError.configurationDisabled.rawValue {
-                throw VPNError.permissionDenied
-            }
-            throw VPNError.configurationFailed(error.localizedDescription)
-        }
-        self.manager = manager
-        return manager
-    }
-
     private func handleStatusChange(from source: ObjectIdentifier?) {
         guard let current = manager?.connection else {
-            // The configuration may still be in the middle of being created.
+            // Changed by the widget or Settings before the configuration was loaded here.
+            Task { await load() }
             return
         }
         if let source, source != ObjectIdentifier(current) { return }
@@ -215,8 +120,18 @@ final class VPNManager {
     }
 
     private func apply(_ connection: NEVPNConnection) {
-        state = VPNConnectionState(connection.status)
-        connectedDate = state == .connected ? connection.connectedDate : nil
+        let newState = VPNConnectionState(connection.status)
+        update(newState, connectedDate: newState == .connected ? connection.connectedDate : nil)
+    }
+
+    private func update(_ newState: VPNConnectionState, connectedDate: Date?) {
+        let changed = newState != state
+        state = newState
+        self.connectedDate = connectedDate
+        if changed {
+            // Keep the Home Screen widget in sync with the real status.
+            WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
+        }
     }
 
     private func reportDisconnectError(_ connection: NEVPNConnection) async {
@@ -229,16 +144,5 @@ final class VPNManager {
         } catch {
             lastError = .tunnel(error.localizedDescription)
         }
-    }
-
-    private func waitForStatus(timeout: Duration, _ predicate: (VPNConnectionState) -> Bool) async -> Bool {
-        let clock = ContinuousClock()
-        let deadline = clock.now + timeout
-        while clock.now < deadline {
-            refreshStatus()
-            if predicate(state) { return true }
-            try? await Task.sleep(for: .milliseconds(200))
-        }
-        return false
     }
 }
