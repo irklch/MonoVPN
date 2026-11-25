@@ -1,0 +1,28 @@
+{
+  "sourceLanguage": "ru",
+  "strings": {
+    "tunnel.error.core %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка VPN-ядра: %@"
+          }
+        }
+      }
+    },
+    "tunnel.error.missingConfiguration": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфигурация VPN не найдена. Откройте Mono VPN и подключитесь заново."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
