@@ -265,6 +265,17 @@
         }
       }
     },
+    "diagnostics.section.tunnel": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Packet Tunnel"
+          }
+        }
+      }
+    },
     "diagnostics.section.unsupported %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -283,6 +294,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "Диагностика импорта"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.core %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ядро: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.error %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка запуска: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.memory %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Память: %1$@ МБ, пик %2$@ МБ, до лимита iOS ещё %3$@ МБ"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.start %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запуск туннеля: %1$@ с (ядро: %2$@ с)"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.stop %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последняя остановка: %@"
           }
         }
       }

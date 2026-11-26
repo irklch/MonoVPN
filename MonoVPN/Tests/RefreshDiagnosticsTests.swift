@@ -54,7 +54,8 @@ struct RefreshDiagnosticsTests {
         #expect(report.duplicateNames == 1)
     }
 
-    /// Провайдер сменил SNI: совместимость gRPC-сервера меняется, причина — параметр `sni`.
+    /// Провайдер сменил SNI. С sing-box совместимость gRPC-сервера с authority меняется
+    /// (причина — параметр `sni`); с Xray authority независим от SNI и статус не меняется.
     @Test func sniRotationFlipsCompatibility() {
         let before = SubscriptionDiagnostics.snapshot(of: body([grpcLink(sni: "front.example.com"), Fixture.trojan]))
         let after = SubscriptionDiagnostics.snapshot(of: body([grpcLink(sni: "other.example.com"), Fixture.trojan]))
@@ -63,6 +64,12 @@ struct RefreshDiagnosticsTests {
         #expect(report.changed == 1)
         #expect(report.added == 0 && report.removed == 0, "the server is matched by name, not by link hash")
         #expect(report.changedParameters == ["sni": 1])
+        guard !VPNCore.current.supportsIndependentGRPCAuthority else {
+            #expect(report.statusChanges.isEmpty)
+            #expect(report.supported == 2)
+            #expect(report.transports["grpc"] == 1)
+            return
+        }
         #expect(report.statusChanges.count == 1)
         let change = report.statusChanges.first
         #expect(change?.name == "G1")
@@ -76,7 +83,7 @@ struct RefreshDiagnosticsTests {
 
     /// Распределения по протоколам, транспортам и причинам считаются по сырым ссылкам.
     @Test func distributions() {
-        let xhttp = "vless://\(Fixture.uuid)@example.com:443?security=reality&pbk=\(Fixture.realityKey)&type=xhttp&path=%2Fx#X"
+        let xhttp = "vless://\(Fixture.uuid)@example.com:443?security=reality&pbk=\(Fixture.realityKey)&type=quic&path=%2Fx#X"
         let header = "vless://\(Fixture.uuid)@example.com:443?type=tcp&headerType=http#H"
         let broken = "vless://bad@example.com:443#B"
         let snapshot = SubscriptionDiagnostics.snapshot(of: body([xhttp, header, broken, "hysteria2://x@example.com:443#Y", Fixture.vlessReality, Fixture.vlessReality]))
@@ -86,10 +93,10 @@ struct RefreshDiagnosticsTests {
         #expect(report.duplicates == 1)
         #expect(report.supported == 1 && report.unsupported == 2 && report.invalid == 2)
         #expect(report.protocols == ["vless": 4, "hysteria2": 1])
-        #expect(report.transports["xhttp"] == 1)
+        #expect(report.transports["quic"] == 1)
         #expect(report.transports["tcp/http"] == 1)
         #expect(report.securities["reality"] == 2)
-        #expect(report.reasons["transport:xhttp"] == 1)
+        #expect(report.reasons["transport:quic"] == 1)
         #expect(report.reasons["headerType:http"] == 1)
         #expect(report.reasons["invalid:invalidUUID"] == 1)
         #expect(report.reasons["scheme:hysteria2"] == 1)

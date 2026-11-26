@@ -112,12 +112,8 @@ enum ProxyLinkParser {
         "chrome", "firefox", "edge", "safari", "360", "qq", "ios", "android", "random", "randomized",
     ]
 
-    /// Методы Shadowsocks, реализованные в sing-box (AEAD и 2022).
-    static let supportedShadowsocksMethods: Set<String> = [
-        "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305",
-        "aes-128-gcm", "aes-192-gcm", "aes-256-gcm",
-        "chacha20-ietf-poly1305", "xchacha20-ietf-poly1305",
-    ]
+    /// Методы Shadowsocks, реализованные ядром текущей сборки (AEAD и 2022).
+    static var supportedShadowsocksMethods: Set<String> { VPNCore.current.shadowsocksMethods }
 
     /// Плагины Shadowsocks (SIP003), встроенные в sing-box; ключ — имя из ссылки, значение — имя в sing-box.
     static let supportedShadowsocksPlugins: [String: String] = [
@@ -181,14 +177,19 @@ enum ProxyLinkParser {
                 // Новое шифрование VLESS Xray содержит ключ: в сообщение идёт только имя алгоритма.
                 throw ProxyLinkError.unsupportedEncryption(String(encryption.split(separator: ".").first ?? ""))
             }
-            server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
+            try applyTransport(from: &query, to: &server)
             server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
-            try applyGRPCAuthority(from: &query, to: server)
+            try applyGRPCAuthority(from: &query, to: &server)
 
             if let flow = query.removeValue(forKey: "flow"), !flow.isEmpty {
                 guard flow == "xtls-rprx-vision" else { throw ProxyLinkError.unsupportedFlow(flow) }
-                guard server.tls != nil, server.transport == .tcp else { throw ProxyLinkError.flowRequiresTLS }
-                server.flow = flow
+                if server.transport != .tcp, VPNCore.current.dropsFlowOnNonTCPTransport {
+                    // Xray выполняет Vision только поверх TCP: на других транспортах flow не передаётся.
+                    server.ignoredParameters.append("flow")
+                } else {
+                    guard server.tls != nil, server.transport == .tcp else { throw ProxyLinkError.flowRequiresTLS }
+                    server.flow = flow
+                }
             }
         }
         server.ignoredParameters += remainingParameters(query)
@@ -212,10 +213,10 @@ enum ProxyLinkParser {
             password: password
         )
         try applyCoreFeatures(to: &server) { server in
-            server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
+            try applyTransport(from: &query, to: &server)
             // Trojan по определению работает через TLS, если это явно не отключено.
             server.tls = try tls(from: &query, defaultSecurity: "tls", ignored: &server.ignoredParameters)
-            try applyGRPCAuthority(from: &query, to: server)
+            try applyGRPCAuthority(from: &query, to: &server)
             if let flow = query.removeValue(forKey: "flow"), !flow.isEmpty {
                 throw ProxyLinkError.unsupportedFlow(flow)
             }
@@ -265,6 +266,11 @@ enum ProxyLinkParser {
             }
             query["headerType"] = nil
         }
+        if query["type"] == "xhttp" || query["type"] == "splithttp" {
+            // v2rayN хранит режим XHTTP в поле `type`.
+            query["mode"] = string("type")
+            query["headerType"] = nil
+        }
         query = query.compactMapValues { $0 }
 
         var server = ServerConfiguration(
@@ -278,9 +284,9 @@ enum ProxyLinkParser {
             vmessAlterID: string("aid").flatMap(Int.init) ?? 0
         )
         try applyCoreFeatures(to: &server) { server in
-            server.transport = try transport(from: &query, ignored: &server.ignoredParameters)
+            try applyTransport(from: &query, to: &server)
             server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
-            try applyGRPCAuthority(from: &query, to: server)
+            try applyGRPCAuthority(from: &query, to: &server)
         }
         server.ignoredParameters += remainingParameters(query)
         return server
@@ -348,7 +354,7 @@ enum ProxyLinkParser {
             method: method
         )
         try applyCoreFeatures(to: &server) { server in
-            guard supportedShadowsocksMethods.contains(method) else {
+            guard VPNCore.current.shadowsocksMethods.contains(method) else {
                 throw ProxyLinkError.unsupportedShadowsocksMethod(method)
             }
             if let plugin = query.removeValue(forKey: "plugin"), !plugin.isEmpty {
@@ -364,7 +370,7 @@ enum ProxyLinkParser {
     private static func applyShadowsocksPlugin(_ plugin: String, to server: inout ServerConfiguration) throws {
         let name = plugin.components(separatedBy: ";")[0].trimmingCharacters(in: .whitespaces)
         let options = plugin.dropFirst(name.count).drop { $0 == ";" }
-        guard let coreName = supportedShadowsocksPlugins[name.lowercased()] else {
+        guard VPNCore.current.supportsShadowsocksPlugins, let coreName = supportedShadowsocksPlugins[name.lowercased()] else {
             throw ProxyLinkError.unsupportedShadowsocksPlugin(name)
         }
         if coreName == "v2ray-plugin", options.split(separator: ";").contains(where: { $0.lowercased() == "mode=quic" }) {
@@ -394,18 +400,26 @@ enum ProxyLinkParser {
         }
     }
 
-    /// Проверяет gRPC `authority` (Xray). В sing-box 1.14.4 без тега `with_grpc` используется
-    /// gRPC lite, который всегда отправляет `:authority` = SNI (или адрес сервера без TLS) с портом;
-    /// отдельной настройки нет. Совпадающий authority применяется как есть, отличающийся — ограничение ядра.
-    private static func applyGRPCAuthority(from query: inout [String: String], to server: ServerConfiguration) throws {
+    /// Применяет gRPC `authority` (Xray).
+    ///
+    /// Xray-core передаёт `:authority` независимо от SNI (`transport/internet/grpc/dial.go`), поэтому
+    /// для него значение сохраняется в `grpcAuthority`, если отличается от SNI. В sing-box 1.14.4
+    /// без тега `with_grpc` используется gRPC lite, который всегда отправляет `:authority` = SNI
+    /// (или адрес сервера без TLS) с портом; совпадающий authority применяется как есть,
+    /// отличающийся — ограничение ядра.
+    private static func applyGRPCAuthority(from query: inout [String: String], to server: inout ServerConfiguration) throws {
         guard let authority = query.removeValue(forKey: "authority")?.trimmingCharacters(in: .whitespaces),
               !authority.isEmpty else { return }
         guard case .grpc = server.transport else { return } // вне gRPC параметр ничего не значит
         let effective = (server.tls?.serverName ?? server.host).lowercased()
         let requested = stripPort(authority, port: server.port).lowercased()
-        guard requested == effective || requested == "[\(effective)]" else {
+        if requested == effective || requested == "[\(effective)]" {
+            return
+        }
+        guard VPNCore.current.supportsIndependentGRPCAuthority else {
             throw ProxyLinkError.unsupportedGRPCAuthority(authority)
         }
+        server.grpcAuthority = authority
     }
 
     /// Убирает из authority порт сервера (`host:443` → `host`).
@@ -418,9 +432,19 @@ enum ProxyLinkParser {
     ///
     /// Пустые значения необязательных параметров равны их отсутствию. Неподдерживаемые, но
     /// безвредные параметры дописываются в `ignored`; транспорт или маскировка заголовков,
-    /// которых нет в ядре (XHTTP/SplitHTTP, QUIC, mKCP, TCP `headerType=http`), — ограничение ядра,
+    /// которых нет в ядре текущей сборки (XHTTP/SplitHTTP без Xray, QUIC, mKCP, TCP `headerType=http`), —
+    /// ограничение ядра,
     /// другой транспорт вместо них не подставляется.
-    private static func transport(from query: inout [String: String], ignored: inout [String]) throws -> TransportSettings {
+    private static func applyTransport(from query: inout [String: String], to server: inout ServerConfiguration) throws {
+        server.transport = try transport(from: &query, ignored: &server.ignoredParameters, extra: &server.xhttpExtra)
+    }
+
+    /// Разбирает транспорт; для XHTTP дополнительно возвращает `extra` (JSON-объект) в `extra`.
+    private static func transport(
+        from query: inout [String: String],
+        ignored: inout [String],
+        extra: inout String?
+    ) throws -> TransportSettings {
         let type = (query.removeValue(forKey: "type") ?? "tcp").lowercased()
         let host = query.removeValue(forKey: "host").flatMap { $0.isEmpty ? nil : $0 }
         let path = query.removeValue(forKey: "path").map { $0.isEmpty ? "/" : $0 }
@@ -453,10 +477,24 @@ enum ProxyLinkParser {
             // `authority` проверяется после TLS в `applyGRPCAuthority`.
             return .grpc(serviceName: serviceName)
         case "http", "h2":
+            guard VPNCore.current.supportsHTTP2Transport else { throw ProxyLinkError.unsupportedTransport(type) }
             let hosts = host.map { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } } ?? []
             return .http(path: path ?? "/", hosts: hosts)
         case "httpupgrade":
             return .httpUpgrade(path: path ?? "/", host: host)
+        case "xhttp", "splithttp":
+            guard VPNCore.current.supportsXHTTP else { throw ProxyLinkError.unsupportedTransport(type) }
+            let mode = query.removeValue(forKey: "mode").flatMap { $0.isEmpty ? nil : $0.lowercased() }
+            if let rawExtra = query.removeValue(forKey: "extra"), !rawExtra.isEmpty {
+                // `extra` — JSON-объект с дополнительными настройками XHTTP; иначе он не применяется.
+                if let data = rawExtra.data(using: .utf8),
+                   (try? JSONSerialization.jsonObject(with: data)) is [String: Any] {
+                    extra = rawExtra
+                } else {
+                    ignored.append("extra")
+                }
+            }
+            return .xhttp(path: path ?? "/", host: host, mode: mode)
         default:
             throw ProxyLinkError.unsupportedTransport(type)
         }

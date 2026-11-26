@@ -49,6 +49,8 @@ struct ImportDiagnosticsView: View {
     let subscription: Subscription
     /// Отчёты о последних обновлениях подписки, от старых к новым.
     var reports: [SubscriptionRefreshReport] = []
+    /// Диагностика расширения Packet Tunnel (читается при открытии окна).
+    @State private var tunnel = TunnelDiagnostics()
 
     /// Заголовок, отчёты об обновлениях и записи по разделам, без ограничения количества.
     var body: some View {
@@ -57,6 +59,20 @@ struct ImportDiagnosticsView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 SheetHeader(title: "diagnostics.title") {
                     EmptyView()
+                }
+                if tunnel.startedAt != nil {
+                    Text("diagnostics.section.tunnel")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Mono.Palette.secondary)
+                        .padding(.top, 8)
+                        .padding(.bottom, 6)
+                    Text(verbatim: TunnelDiagnosticsText.lines(for: tunnel).joined(separator: "\n"))
+                        .font(.caption)
+                        .foregroundStyle(Mono.Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .padding(.vertical, 8)
+                        .padding(.bottom, 12)
                 }
                 if !reports.isEmpty {
                     Text("diagnostics.section.refreshes \(reports.count)")
@@ -108,6 +124,7 @@ struct ImportDiagnosticsView: View {
             .padding(.bottom, 32)
         }
         .background(Mono.Palette.background.ignoresSafeArea())
+        .onAppear { tunnel = TunnelDiagnosticsStore().load() }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
@@ -168,5 +185,35 @@ enum RefreshReportText {
     /// Статус для показа: «поддерживается» или код причины.
     private static func status(_ code: String) -> String {
         code == SubscriptionDiagnostics.supportedStatus ? String(localized: "diagnostics.refresh.supported") : code
+    }
+}
+
+/// Текст диагностики Packet Tunnel: числа, время, коды причин и очищенные ошибки.
+enum TunnelDiagnosticsText {
+    /// Сколько последних событий показывать.
+    static let visibleEvents = 12
+
+    /// Строки в порядке показа.
+    static func lines(for diagnostics: TunnelDiagnostics) -> [String] {
+        let number = { (value: Double?) in value.map { String(format: "%.1f", $0) } ?? "—" }
+        let seconds = { (value: Double?) in value.map { String(format: "%.2f", $0) } ?? "—" }
+        var lines: [String] = []
+        if let core = diagnostics.core {
+            lines.append(String(localized: "diagnostics.tunnel.core \(core)"))
+        }
+        lines.append(String(localized: "diagnostics.tunnel.start \(seconds(diagnostics.startDuration)) \(seconds(diagnostics.coreStartDuration))"))
+        if diagnostics.footprintMB != nil {
+            lines.append(String(localized: "diagnostics.tunnel.memory \(number(diagnostics.footprintMB)) \(number(diagnostics.peakFootprintMB)) \(number(diagnostics.availableMB))"))
+        }
+        if let error = diagnostics.lastStartError {
+            lines.append(String(localized: "diagnostics.tunnel.error \(error)"))
+        }
+        if let reason = diagnostics.stopReason, !diagnostics.endedWithoutStop {
+            lines.append(String(localized: "diagnostics.tunnel.stop \(reason)"))
+        }
+        for event in diagnostics.events.suffix(visibleEvents).reversed() {
+            lines.append("\(event.date.formatted(date: .omitted, time: .standard)) \(event.message)")
+        }
+        return lines
     }
 }

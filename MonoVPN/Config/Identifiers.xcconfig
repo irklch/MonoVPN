@@ -29,3 +29,9 @@ IPHONEOS_DEPLOYMENT_TARGET = 17.0
 CODE_SIGN_STYLE = Automatic
 // Team ID разработчика; пусто, пока не указан личный аккаунт.
 DEVELOPMENT_TEAM =
+
+// VPN-ядро сборки. MONO_CORE_XRAY — Xray-core (LibXray.xcframework, собирается
+// MonoVPN/Scripts/build-libxray.sh). Чтобы вернуться к sing-box: удалите MONO_CORE_XRAY
+// и замените в target PacketTunnel → Frameworks LibXray.xcframework на Libbox.xcframework
+// (MonoVPN/Scripts/build-libbox.sh). Две Go-библиотеки в одном процессе линковать нельзя.
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) MONO_CORE_XRAY

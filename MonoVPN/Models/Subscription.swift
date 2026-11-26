@@ -22,6 +22,8 @@ struct Subscription: Codable, Hashable, Sendable {
     /// Снимок последнего ответа для диагностики обновлений: хеши и статусы, без значений параметров.
     /// `nil` у подписок, сохранённых до появления диагностики.
     var snapshot: SubscriptionSnapshot? = nil
+    /// Ядро, для которого разобраны серверы; `nil` — сохранено до появления выбора ядра (sing-box).
+    var core: VPNCore? = nil
 
     /// Можно ли обновить подписку: только для подписки по URL.
     var isRefreshable: Bool {

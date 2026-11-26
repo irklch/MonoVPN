@@ -34,6 +34,9 @@ enum TransportSettings: Codable, Hashable, Sendable {
     case http(path: String, hosts: [String])
     /// HTTPUpgrade: путь и заголовок Host.
     case httpUpgrade(path: String, host: String?)
+    /// XHTTP (SplitHTTP) Xray: путь, заголовок Host и режим (`auto`, `packet-up`, `stream-up`, `stream-one`).
+    /// Поддерживается только ядром Xray (`VPNCore.supportsXHTTP`).
+    case xhttp(path: String, host: String?, mode: String?)
 
     /// Короткое название транспорта для интерфейса.
     var displayName: String {
@@ -43,6 +46,7 @@ enum TransportSettings: Codable, Hashable, Sendable {
         case .grpc: "gRPC"
         case .http: "HTTP/2"
         case .httpUpgrade: "HTTPUpgrade"
+        case .xhttp: "XHTTP"
         }
     }
 }
@@ -101,6 +105,10 @@ struct ServerConfiguration: Codable, Hashable, Identifiable, Sendable {
 
     /// Транспорт; по умолчанию TCP.
     var transport: TransportSettings = .tcp
+    /// gRPC `:authority`, если он задан в ссылке и отличается от SNI (только ядро Xray).
+    var grpcAuthority: String?
+    /// Дополнительные параметры XHTTP (`extra` из ссылки) — JSON-объект как есть (только ядро Xray).
+    var xhttpExtra: String?
     /// Параметры TLS; `nil` — соединение без TLS.
     var tls: TLSSettings?
 

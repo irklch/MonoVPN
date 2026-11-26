@@ -124,7 +124,8 @@ struct SubscriptionService: Sendable {
             servers: result.servers,
             issues: result.issues,
             lastUpdated: snapshot.createdAt,
-            snapshot: snapshot
+            snapshot: snapshot,
+            core: VPNCore.current
         )
     }
 
