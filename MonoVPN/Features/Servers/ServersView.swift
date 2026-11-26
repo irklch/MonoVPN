@@ -19,7 +19,7 @@ struct ServersView: View {
                     ) {
                         Task { await model.refreshSubscription() }
                     }
-                    .disabled(model.isRefreshing)
+                    .disabled(model.isRefreshing || model.isImporting)
                 }
             }
             .padding(.horizontal, Mono.Metrics.screenPadding)

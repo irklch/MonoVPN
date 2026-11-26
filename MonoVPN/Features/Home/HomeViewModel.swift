@@ -217,7 +217,9 @@ final class HomeViewModel {
     /// Возвращает `true` при успехе.
     @discardableResult
     func importSubscription(from input: String) async -> Bool {
-        guard !isImporting else { return false }
+        // Импорт и обновление не выполняются одновременно: иначе позже завершившийся запрос
+        // перезаписал бы результат другого (например, старая подписка — только что импортированную).
+        guard !isImporting, !isRefreshing else { return false }
         isImporting = true
         defer { isImporting = false }
         subscriptionError = nil
@@ -237,12 +239,14 @@ final class HomeViewModel {
 
     /// Заново скачивает текущую подписку. При ошибке сохраняется последняя рабочая.
     func refreshSubscription() async {
-        guard let source = appState.subscription?.source, !isRefreshing else { return }
+        guard let source = appState.subscription?.source, !isRefreshing, !isImporting else { return }
         isRefreshing = true
         defer { isRefreshing = false }
         subscriptionError = nil
         do {
             let subscription = try await service.refresh(source)
+            // Пока шла загрузка, подписку могли удалить: ответ устаревшего запроса не применяется.
+            guard appState.subscription?.source == source else { return }
             if await !apply(subscription) {
                 subscriptionError = String(localized: "error.switch.notStopped")
             }
@@ -279,9 +283,17 @@ final class HomeViewModel {
     /// необходимости перезапускает VPN. Возвращает `false`, если работающий туннель
     /// не удалось остановить — тогда подписка остаётся прежней.
     private func apply(_ subscription: Subscription) async -> Bool {
+        let report = diagnose(subscription)
         var updated = appState
         updated.replaceSubscription(with: subscription)
-        let commit = { self.appState = updated }
+        // Изменение применяется к состоянию на момент фиксации (после остановки туннеля),
+        // а не к копии, снятой до ожидания, чтобы не потерять изменения, сделанные за это время.
+        let commit = {
+            var state = self.appState
+            state.replaceSubscription(with: subscription)
+            state.refreshReports = SubscriptionDiagnostics.appending(report, to: state.refreshReports)
+            self.appState = state
+        }
 
         // Работающий туннель использует старые параметры: перезапускаем, если они изменились.
         guard updated.selectedServer != selectedServer else {
@@ -291,6 +303,19 @@ final class HomeViewModel {
             return true
         }
         return await switchTunnel(commit)
+    }
+
+    /// Сравнивает новый ответ с предыдущим ответом того же источника и пишет отчёт в журнал.
+    /// Отчёт сохраняется вместе с подпиской при фиксации.
+    private func diagnose(_ subscription: Subscription) -> SubscriptionRefreshReport {
+        let previous = appState.subscription?.source == subscription.source ? appState.subscription?.snapshot : nil
+        let current = subscription.snapshot ?? SubscriptionSnapshot(
+            createdAt: subscription.lastUpdated, responseHash: "", normalizedHash: "", byteCount: 0,
+            entries: [], duplicateCount: 0, nondeterministicCount: 0
+        )
+        let report = SubscriptionDiagnostics.report(previous: previous, current: current)
+        SubscriptionDiagnostics.log(report)
+        return report
     }
 
     /// Поддерживает актуальной копию конфигурации sing-box выбранного сервера в Keychain.

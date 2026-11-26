@@ -44,10 +44,10 @@ struct SubscriptionParseResult: Equatable {
 enum SubscriptionParser {
     /// Декодирует байты как UTF-8 (или Latin-1) и разбирает текст.
     static func parse(_ data: Data) throws -> SubscriptionParseResult {
-        guard let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
+        guard let decoded = Self.text(from: data) else {
             throw SubscriptionParseError.unsupportedFormat("binary")
         }
-        return try parse(text)
+        return try parse(decoded)
     }
 
     /// Разбирает текст подписки: при необходимости декодирует Base64, затем разбирает каждую ссылку.
@@ -56,17 +56,7 @@ enum SubscriptionParser {
     /// запускать, остаются в `servers` с `incompatibility`. Дубликаты по `id` (одинаковые ссылки)
     /// отбрасываются. Если не распознан ни один сервер — бросает `noSupportedServers`.
     static func parse(_ text: String) throws -> SubscriptionParseResult {
-        let body = text.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{FEFF}")))
-        guard !body.isEmpty else { throw SubscriptionParseError.empty }
-
-        let lines: [String]
-        if body.contains("://") {
-            lines = splitLines(body)
-        } else if let decoded = Base64.decodeString(body), decoded.contains("://") {
-            lines = splitLines(decoded)
-        } else {
-            throw SubscriptionParseError.unsupportedFormat(detectFormat(body))
-        }
+        let lines = try entries(in: text)
 
         var servers: [ServerConfiguration] = []
         var issues: [ParseIssue] = []
@@ -97,6 +87,27 @@ enum SubscriptionParser {
             throw SubscriptionParseError.noSupportedServers(issues)
         }
         return SubscriptionParseResult(servers: servers, issues: issues)
+    }
+
+    /// Строки тела подписки в том виде, в каком их разбирает `parse`: при необходимости тело
+    /// декодируется из Base64, пустые строки и комментарии убираются. Порядок сохраняется.
+    /// Используется и парсером, и диагностикой обновлений, поэтому обе видят одни и те же записи.
+    static func entries(in text: String) throws -> [String] {
+        let body = text.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{FEFF}")))
+        guard !body.isEmpty else { throw SubscriptionParseError.empty }
+
+        if body.contains("://") {
+            return splitLines(body)
+        } else if let decoded = Base64.decodeString(body), decoded.contains("://") {
+            return splitLines(decoded)
+        } else {
+            throw SubscriptionParseError.unsupportedFormat(detectFormat(body))
+        }
+    }
+
+    /// Декодирует байты тела подписки в текст так же, как `parse(_ data:)`.
+    static func text(from data: Data) -> String? {
+        String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
     }
 
     /// Делит текст на строки, обрезает пробелы и убирает пустые строки и комментарии (`#`, `//`).

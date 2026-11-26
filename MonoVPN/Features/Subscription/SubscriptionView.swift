@@ -78,7 +78,7 @@ struct SubscriptionView: View {
 
                 if let subscription = model.subscription {
                     let count = ImportDiagnostics.entries(for: subscription).count
-                    if count > 0 {
+                    if count > 0 || !(model.appState.refreshReports ?? []).isEmpty {
                         Button {
                             isDiagnosticsPresented = true
                         } label: {
@@ -102,7 +102,7 @@ struct SubscriptionView: View {
         .presentationCornerRadius(28)
         .sheet(isPresented: $isDiagnosticsPresented) {
             if let subscription = model.subscription {
-                ImportDiagnosticsView(subscription: subscription)
+                ImportDiagnosticsView(subscription: subscription, reports: model.appState.refreshReports ?? [])
             }
         }
         .confirmationDialog(

@@ -19,6 +19,9 @@ struct Subscription: Codable, Hashable, Sendable {
     var issues: [ParseIssue]
     /// Дата последнего успешного импорта или обновления.
     var lastUpdated: Date
+    /// Снимок последнего ответа для диагностики обновлений: хеши и статусы, без значений параметров.
+    /// `nil` у подписок, сохранённых до появления диагностики.
+    var snapshot: SubscriptionSnapshot? = nil
 
     /// Можно ли обновить подписку: только для подписки по URL.
     var isRefreshable: Bool {
@@ -53,14 +56,34 @@ struct AppState: Codable, Equatable, Sendable {
     var subscription: Subscription?
     /// ID выбранного пользователем сервера.
     var selectedServerID: String?
+    /// Последние отчёты диагностики обновлений подписки (не больше `SubscriptionDiagnostics.maxReports`).
+    /// Опционально, чтобы состояние, сохранённое прежними версиями, по-прежнему декодировалось.
+    var refreshReports: [SubscriptionRefreshReport]?
 
     /// Заменяет подписку, сохраняя выбранный пользователем сервер, если он всё ещё есть
     /// и поддерживается; иначе выбранным становится первый поддерживаемый сервер.
+    ///
+    /// ID сервера — хеш всей ссылки, поэтому он меняется, если провайдер поменял в ссылке
+    /// хоть что-то (SNI, short ID, имя с остатком трафика). Тогда выбор переносится на сервер
+    /// с тем же протоколом, именем, адресом и портом, а затем — с тем же протоколом и именем,
+    /// если такой сервер единственный; только потом выбирается первый поддерживаемый.
     mutating func replaceSubscription(with subscription: Subscription) {
+        let previous = selectedServerID.flatMap { id in self.subscription?.servers.first { $0.id == id } }
         self.subscription = subscription
         let supported = subscription.servers.filter(\.isSupported)
         if let id = selectedServerID, supported.contains(where: { $0.id == id }) {
             return
+        }
+        if let previous {
+            let sameEndpoint = supported.filter {
+                $0.proxyProtocol == previous.proxyProtocol && $0.name == previous.name
+                    && $0.host == previous.host && $0.port == previous.port
+            }
+            let sameName = supported.filter { $0.proxyProtocol == previous.proxyProtocol && $0.name == previous.name }
+            if let match = sameEndpoint.first ?? (sameName.count == 1 ? sameName.first : nil) {
+                selectedServerID = match.id
+                return
+            }
         }
         selectedServerID = supported.first?.id
     }

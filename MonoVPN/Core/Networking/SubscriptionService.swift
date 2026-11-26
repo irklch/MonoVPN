@@ -101,22 +101,31 @@ struct SubscriptionService: Sendable {
     /// эффектов, чтобы вызывающий мог сохранить последнюю рабочую конфигурацию.
     func refresh(_ source: Subscription.Source) async throws -> Subscription {
         let result: SubscriptionParseResult
+        let snapshot: SubscriptionSnapshot
         switch source {
         case let .remote(url):
             let data = try await download(url)
+            snapshot = SubscriptionDiagnostics.snapshot(of: data)
             do {
                 result = try SubscriptionParser.parse(data)
             } catch let error as SubscriptionParseError {
                 throw SubscriptionError.parse(error)
             }
         case let .link(link):
+            snapshot = SubscriptionDiagnostics.snapshot(ofLink: link)
             do {
                 result = SubscriptionParseResult(servers: [try ProxyLinkParser.parse(link)], issues: [])
             } catch let error as ProxyLinkError {
                 throw SubscriptionError.link(error)
             }
         }
-        return Subscription(source: source, servers: result.servers, issues: result.issues, lastUpdated: .now)
+        return Subscription(
+            source: source,
+            servers: result.servers,
+            issues: result.issues,
+            lastUpdated: snapshot.createdAt,
+            snapshot: snapshot
+        )
     }
 
     /// Проверяет ввод пользователя, не обращаясь к сети.
