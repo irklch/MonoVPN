@@ -1,498 +1,444 @@
 # Mono VPN
 
-Минималистичный VPN-клиент для iOS. Пользователь вставляет ссылку подписки, выбирает сервер и нажимает Play. Собственных серверов, backend, аналитики, авторизации у приложения нет: оно подключается к серверам стороннего провайдера из подписки пользователя.
+Минималистичный VPN-клиент для iOS. Пользователь вставляет ссылку на подписку своего
+VPN-провайдера, выбирает сервер и нажимает кнопку подключения. У приложения нет собственных
+серверов, backend, аналитики и авторизации: оно подключается к серверам стороннего провайдера
+из подписки пользователя.
 
-- Платформа: iOS 17.0+, iPhone, портретная ориентация.
-- Стек: Swift, SwiftUI, MVVM, Swift Concurrency, NetworkExtension (`NETunnelProviderManager` + `NEPacketTunnelProvider`), Keychain, App Groups.
-- VPN Core: [sing-box](https://github.com/SagerNet/sing-box) **v1.14.4** (Libbox, собирается локально в `Libbox.xcframework`).
-- Сторонних Swift-зависимостей нет.
+- **Версия:** 1.0.0 (build 1), iOS 17.0+, только iPhone, портретная ориентация, интерфейс на русском.
+- **VPN-ядро:** [Xray-core](https://github.com/XTLS/Xray-core) **v26.11.9** через
+  [libXray](https://github.com/XTLS/libXray) v26.11.9 (статическая библиотека
+  `LibXray.xcframework`, собирается локально).
+- **Стек:** Swift, SwiftUI, Swift Concurrency, NetworkExtension (`NETunnelProviderManager` +
+  `NEPacketTunnelProvider`), WidgetKit и App Intents, Keychain, App Groups.
+- **Зависимости:** сторонних Swift-пакетов нет; Go-зависимости libXray перечислены в
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-> **Ветка `feature/xray-core-migration` — Proof of Concept на Xray-core v26.11.9** (флаг сборки `MONO_CORE_XRAY`, `LibXray.xcframework` из `MonoVPN/Scripts/build-libxray.sh`). Сборка и проверка на iPhone — [docs/xray-poc-testing.md](docs/xray-poc-testing.md), план — [docs/xray-migration.md](docs/xray-migration.md). Описание ниже относится к реализации на sing-box, которая остаётся в репозитории до успешной проверки PoC.
-
-> **Статус.** Код всех targets (приложение, Packet Tunnel, виджет) собирается для устройства (arm64, без подписи) и симулятора, unit-тесты проходят, конфигурации sing-box проходят `sing-box check`. **Реальное VPN-подключение и работа виджета не проверены:** для этого нужны платный Apple Developer аккаунт и физический iPhone (см. «Что проверить на iPhone»). До такой проверки VPN нельзя считать работающим.
+Подготовка к App Store: [лицензии](docs/licensing.md) ·
+[конфиденциальность и App Privacy](docs/app-store-privacy.md) ·
+[Export Compliance](docs/export-compliance.md).
 
 ---
 
 ## Содержание
 
-1. [Архитектура](#архитектура)
-2. [Сборка](#сборка)
-3. [Интеграция VPN Core](#интеграция-vpn-core)
-4. [Signing & Capabilities](#signing--capabilities)
-5. [Запуск на физическом iPhone](#запуск-на-физическом-iphone)
-6. [Internal TestFlight](#internal-testflight)
-7. [Подписки и протоколы](#подписки-и-протоколы)
-8. [Маршрутизация, DNS и утечки](#маршрутизация-dns-и-утечки)
-9. [Виджет](#виджет)
-10. [Иконка приложения](#иконка-приложения)
-11. [Результаты технического ревью](#результаты-технического-ревью)
-12. [Лицензионные требования](#лицензионные-требования)
-13. [Известные ограничения](#известные-ограничения)
-14. [Ограничения Apple для VPN-приложений](#ограничения-apple-для-vpn-приложений)
-15. [Чек-лист ручного тестирования VPN](#чек-лист-ручного-тестирования-vpn)
+1. [Возможности](#возможности)
+2. [Архитектура](#архитектура)
+3. [Сборка](#сборка)
+4. [Идентификаторы и подпись](#идентификаторы-и-подпись)
+5. [Подписки и протоколы](#подписки-и-протоколы)
+6. [Безопасность конфигураций провайдера](#безопасность-конфигураций-провайдера)
+7. [Маршрутизация и DNS](#маршрутизация-и-dns)
+8. [Виджет](#виджет)
+9. [Данные и конфиденциальность](#данные-и-конфиденциальность)
+10. [Лицензии](#лицензии)
+11. [Публикация в App Store](#публикация-в-app-store)
+12. [Известные ограничения](#известные-ограничения)
+13. [Чек-лист ручного тестирования](#чек-лист-ручного-тестирования)
 
 ---
+
+## Возможности
+
+- **Импорт подписки.** HTTPS-ссылка на подписку или одна прокси-ссылка (`vless://`,
+  `vmess://`, `trojan://`, `ss://`). Есть обновление вручную и удаление подписки.
+- **JSON-подписки панелей** (Remnawave и подобные): готовые конфиги Xray с балансировщиками
+  «Авто», Hysteria, собственными DNS и правилами провайдера.
+- **Список серверов на главном экране.** Неподдерживаемые серверы показаны неактивными.
+  Причины видны в «Подписка → Диагностика импорта».
+- **Подключение одной кнопкой.** Статус и время подключения всегда берутся из системы
+  (`NEVPNStatus`, `connectedDate`). Под таймером — скорость трафика и предупреждение, если
+  сервер не возвращает данные.
+- **Смена сервера при включённом VPN:** туннель останавливается с подтверждением системы
+  и запускается с новым сервером.
+- **Виджет Home Screen** для подключения и отключения последнего выбранного сервера.
+- **Экран «Перед подключением»** с описанием обработки данных — показывается перед первым
+  подключением, в том числе начатым из виджета.
+- **Ссылки «Политика конфиденциальности» и «Лицензии»** в листе «Подписка».
 
 ## Архитектура
 
 ```
 MonoVPN.xcodeproj
-Frameworks/                  Libbox.xcframework (собирается скриптом, в git не хранится)
+Frameworks/                  LibXray.xcframework (собирается скриптом, в git не хранится)
+THIRD_PARTY_NOTICES.md       лицензии сторонних компонентов (генерируется)
+docs/                        лицензии, конфиденциальность, Export Compliance
 MonoVPN/
-├── App/                     MonoVPNApp — точка входа, обработка scenePhase
+├── App/                     MonoVPNApp — точка входа, команды виджета, очистка данных прежних версий
 ├── Core/
-│   ├── VPN/                 VPNManager, VPNConfigurationBuilder, ConnectionDurationFormatter
-│   ├── Networking/          SubscriptionService (загрузка подписки, ошибки сети)
-│   ├── Storage/             AppStateStore (Keychain), Preferences (несекретные флаги)
-│   └── Parsing/             SubscriptionParser, ProxyLinkParser
-├── Models/                  ServerConfiguration, Subscription, AppState
+│   ├── VPN/                 VPNManager, XrayConfigurationBuilder, XrayPanelConfiguration, TrafficMeter
+│   ├── Networking/          SubscriptionService (загрузка подписки)
+│   ├── Parsing/             SubscriptionParser, ProxyLinkParser, XrayJSONSubscriptionParser
+│   └── Storage/             AppStateStore (Keychain), PanelConfigurationStore (файл), LegacyDiagnosticsCleanup
+├── Models/                  ServerConfiguration, Subscription, AppState, VPNCore
 ├── Features/
-│   ├── Home/                HomeView, HomeViewModel
-│   ├── Servers/             ServerListView (список серверов на главном экране)
-│   ├── Subscription/        SubscriptionView (sheet «Подписка»)
-│   └── Privacy/             PrivacyNoticeView (перед первым подключением)
-├── DesignSystem/            Палитра, стили кнопок, общие компоненты
-├── Resources/               Assets.xcassets, Localizable.xcstrings
-├── Shared/                  Код и строки для приложения и extensions: AppIdentifiers, SecureStorage, TunnelController, WidgetCommand, Tunnel.xcstrings
-├── PacketTunnel/            PacketTunnelProvider, TunnelPlatformInterface (мост Libbox ↔ NetworkExtension)
-├── Widget/                  Виджет Home Screen и App Intent
+│   ├── Home/                главный экран, модель, скорость трафика
+│   ├── Servers/             список серверов
+│   ├── Subscription/        лист «Подписка», диагностика импорта
+│   ├── Privacy/             экран «Перед подключением»
+│   └── Legal/               ссылка на политику, экран «Лицензии»
+├── DesignSystem/            палитра, стили кнопок, общие компоненты
+├── Resources/               Assets, Localizable.xcstrings, PrivacyInfo.xcprivacy, ThirdPartyNotices.json
+├── Shared/                  общий код app/extension/widget: TunnelController, SecureStorage,
+│                            XrayConfigurationPolicy, XrayRuntimeConfiguration, WidgetCommand, Tunnel.xcstrings
+├── Intents/                 ToggleVPNIntent (App Intent виджета)
+├── PacketTunnel/            XrayPacketTunnelProvider, XrayCore (C API libXray), PrivacyInfo.xcprivacy
+├── Widget/                  виджет, строки, PrivacyInfo.xcprivacy
 ├── Config/                  Identifiers.xcconfig, Info.plist, entitlements
-├── Scripts/                 build-libbox.sh
-└── Tests/                   Unit-тесты (Swift Testing)
+├── Scripts/                 сборка libXray, генерация уведомлений, проверка Privacy Manifest
+└── Tests/                   unit-тесты (Swift Testing)
 ```
 
-Папки подключены к Xcode как синхронизируемые группы (Xcode 16+): новые файлы в папке автоматически попадают в нужный target.
+Папки подключены к Xcode как синхронизируемые группы (Xcode 16+): файлы в папке автоматически
+входят в targets, указанные ниже.
 
 | Target | Тип | Папки |
 |---|---|---|
-| `MonoVPN` | приложение | App, Core, Models, Features, DesignSystem, Resources, Shared |
-| `PacketTunnel` | Packet Tunnel Provider extension (встраивается в приложение) | PacketTunnel, Shared + Libbox.xcframework, NetworkExtension, UIKit, libresolv |
-| `MonoVPNWidget` | Widget Extension (встраивается в приложение) | Widget, Shared |
+| `MonoVPN` | приложение | App, Core, Models, Features, DesignSystem, Resources, Shared, Intents |
+| `PacketTunnel` | Packet Tunnel Provider extension | PacketTunnel, Shared + `LibXray.xcframework`, NetworkExtension, UIKit, libresolv |
+| `MonoVPNWidget` | Widget extension | Widget, Shared, Intents |
 | `MonoVPNTests` | unit-тесты (host — приложение) | Tests |
 
-### Ответственность компонентов
+### Основные компоненты
 
-- **SubscriptionParser** — разбирает тело подписки: список ссылок (plain text или Base64, стандартный и URL-safe). Clash YAML, JSON и HTML распознаются и отклоняются с понятной ошибкой. Неподдерживаемые записи не теряются молча — они попадают в `issues` и показываются пользователю.
-- **ProxyLinkParser** — разбирает `vless://`, `vmess://`, `trojan://`, `ss://`, валидирует UUID, порт, ключ REALITY и т. д. Параметры, которые sing-box не поддерживает, либо делают ссылку невалидной (если без них подключение будет не тем, что задумал провайдер), либо попадают в `ignoredParameters` и показываются в списке серверов.
-- **SubscriptionService** — валидирует ввод (только HTTPS, либо отдельная ссылка), загружает подписку через эфемерную `URLSession` (без кэша и cookies), переводит ошибки сети в понятные сообщения. При ошибке ничего не меняет — последняя корректная конфигурация сохраняется.
-- **VPNConfigurationBuilder** — строит JSON-конфигурацию sing-box 1.14 для выбранного сервера.
-- **SecureStorage / AppStateStore** — Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, общая access group). Подписка, серверы и выбранный сервер хранятся одним Keychain-элементом. В `UserDefaults` — только флаг «экран конфиденциальности показан».
-- **VPNManager** (`@MainActor @Observable`) — владеет `NETunnelProviderManager`, подписан на `NEVPNStatusDidChange` и `NEVPNConfigurationChange`. Состояние подключения — это всегда `NEVPNStatus` (Invalid / Disconnected / Connecting / Connected / Reasserting / Disconnecting), а не локальный Boolean. Время подключения — `connection.connectedDate`.
-- **HomeViewModel** — сценарии экрана: подключение/отключение с защитой от повторных нажатий, смена сервера (остановка туннеля → ожидание `.disconnected` → запуск с новой конфигурацией), импорт/обновление/удаление подписки (с предварительным отключением VPN).
-- **PacketTunnelProvider** — читает готовую конфигурацию из общего Keychain, инициализирует Libbox (`LibboxSetup`), создаёт `LibboxCommandServer` и запускает сервис (`startOrReloadService`). Конфигурация берётся из Keychain, а не из `startVPNTunnel(options:)`, поэтому туннель может перезапустить и система, и пользователь из «Настроек», в том числе при заблокированном экране.
-- **TunnelPlatformInterface** — реализация `LibboxPlatformInterface`: настраивает `NEPacketTunnelNetworkSettings` (адреса, маршруты IPv4/IPv6, DNS) по запросу ядра, отдаёт ядру дескриптор TUN, отслеживает смену сети через `NWPathMonitor` (Wi-Fi ↔ сотовая сеть).
+- **SubscriptionService** — принимает только HTTPS-ссылку на подписку или одиночную
+  прокси-ссылку. Загружает через эфемерную `URLSession` (без cookies и кэша, `User-Agent:
+  MonoVPN/<версия>`): сначала `<адрес>/json` (JSON-подписка Xray), затем обычную подписку со
+  ссылками. При ошибке ничего не меняет — последняя рабочая подписка сохраняется.
+- **ProxyLinkParser / SubscriptionParser** — разбирают ссылки (plain text или Base64).
+  Неподдерживаемые записи не теряются молча, а попадают в диагностику импорта.
+- **XrayConfigurationBuilder** — конфигурация Xray для сервера из ссылки.
+  **XrayPanelConfiguration** — адаптация готового конфига из JSON-подписки.
+- **XrayConfigurationPolicy** — ограничения безопасности для любой конфигурации (см. ниже).
+- **AppStateStore / SecureStorage** — подписка, серверы, выбранный сервер и конфигурация
+  туннеля хранятся в Keychain.
+- **VPNManager** (`@MainActor @Observable`) — владеет `NETunnelProviderManager` и отражает
+  `NEVPNStatus`. Системные операции идут через общий **TunnelController**, им же пользуется
+  виджет.
+- **XrayPacketTunnelProvider** (`PacketTunnel/`) — читает конфигурацию из общего Keychain,
+  заранее разрешает имена серверов, настраивает `NEPacketTunnelNetworkSettings`, передаёт
+  дескриптор utun во встроенный TUN Xray и запускает ядро. Конфигурация берётся из Keychain,
+  поэтому туннель может запустить и система, и «Настройки → VPN», и виджет.
 
-### Секундомер
-
-`TimelineView(.periodic(by: 1))` каждую секунду пересчитывает `now − connectedDate`. Фонового `Timer` и накопления времени нет, поэтому значение верно после сворачивания и перезапуска приложения (статус и дата перечитываются при каждом возврате в foreground). При любом статусе, кроме Connected, показывается `00:00:00`.
-
----
+> В репозитории остались исходники интеграции sing-box (`PacketTunnel/PacketTunnelProvider.swift`,
+> `PacketTunnel/TunnelPlatformInterface.swift`, `Core/VPN/VPNConfigurationBuilder.swift`,
+> `Scripts/build-libbox.sh`). В сборку они не входят: файлы extension обёрнуты в
+> `#if !MONO_CORE_XRAY`, флаг `MONO_CORE_XRAY` задан в `Identifiers.xcconfig`, а
+> `Libbox.xcframework` в проекте не подключён.
 
 ## Сборка
 
 ### Требования
 
-- macOS с Xcode 16 или новее (проверено на Xcode 27.0, iOS SDK 27.0).
-- Go ≥ 1.25 (`brew install go`) — только для сборки VPN Core; нужная версия toolchain (`go1.26.10`) скачивается самим `go`.
+- macOS с Xcode 16 или новее.
+- Go ≥ 1.21 (`brew install go`); нужный тулчейн (`go1.27.3`) Go скачает сам.
 - git.
 
 ### Шаги
 
-```bash
-MonoVPN/Scripts/build-libbox.sh
-```
+1. Соберите VPN-ядро. Скрипт закрепляет libXray v26.11.9 (commit `5a0f7d8d…`), Xray-core
+   v26.11.9 (commit `676eaf66…`) и Go 1.27.3, проверяет `go.sum`, собирает срезы `ios-arm64` и
+   симулятора и создаёт `Frameworks/LibXray.xcframework` и `Frameworks/LIBXRAY_VERSION`:
 
-```bash
-open MonoVPN.xcodeproj
-```
+   ```bash
+   MonoVPN/Scripts/build-libxray.sh
+   ```
 
-Проверка сборки без подписи (так проверялся проект):
+   Только для устройства (быстрее):
 
-```bash
-xcodebuild -project MonoVPN.xcodeproj -scheme MonoVPN -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
-```
+   ```bash
+   PLATFORMS=ios MonoVPN/Scripts/build-libxray.sh
+   ```
 
-Unit-тесты (нужен срез симулятора в Libbox — скрипт по умолчанию собирает его):
+2. Откройте проект:
 
-```bash
-xcodebuild test -project MonoVPN.xcodeproj -scheme MonoVPN -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:MonoVPNTests CODE_SIGNING_ALLOWED=NO
-```
+   ```bash
+   open MonoVPN.xcodeproj
+   ```
 
----
+3. Сборка без подписи:
 
-## Интеграция VPN Core
+   ```bash
+   xcodebuild -project MonoVPN.xcodeproj -scheme MonoVPN -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+   ```
 
-### Выбор и проверка
+4. Unit-тесты (нужен срез симулятора в `LibXray.xcframework`):
 
-| Вопрос | Результат |
-|---|---|
-| Версия | sing-box **v1.14.4** (последний стабильный тег на момент интеграции), commit `c005f35300ce76427dc285481ec5695f5b179cd2` |
-| iOS 17+ | Libbox собирается с `-iosversion=15.0`, приложение — iOS 17.0 |
-| Packet Tunnel Provider | Да: тот же подход, что у официального клиента sing-box-for-apple (`LibboxCommandServer` + `LibboxPlatformInterface`) |
-| Сборка для iOS | `gomobile bind` (форк `github.com/sagernet/gomobile` v0.1.13) → `Libbox.xcframework` (статический фреймворк, встраивать не нужно) |
-| arm64 (устройство) | Да: срез `ios-arm64`; плюс `ios-arm64_x86_64-simulator` для тестов |
-| Протоколы | VLESS (+ REALITY, TLS, Vision), VMess, Trojan, Shadowsocks (AEAD и 2022) |
-| Память Network Extension | iOS ограничивает память packet tunnel (~50 МБ). Сборка с тегом `with_low_memory`, включён OOM-killer Libbox; размер бинарника extension ~55 МБ (это не потребление памяти, но проверить реальное потребление нужно на устройстве) |
-| App Store / TestFlight | Технических препятствий нет (официальный клиент sing-box распространяется через App Store), **но есть лицензионный вопрос** — см. «Лицензионные требования» |
-| Лицензия | GPL-3.0-or-later + дополнительное условие об имени (см. ниже) |
+   ```bash
+   xcodebuild test -project MonoVPN.xcodeproj -scheme MonoVPN -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:MonoVPNTests CODE_SIGNING_ALLOWED=NO
+   ```
 
-API Libbox не придуман: код extension написан по заголовку `Libbox.objc.h`, сгенерированному из исходников v1.14.4, и сверен с реализацией sing-box-for-apple. При смене версии sing-box API может измениться — пересоберите и исправьте ошибки компиляции.
+Packet Tunnel не работает в симуляторе: VPN проверяется только на устройстве. Для запуска на
+iPhone нужна подпись с командой, у которой есть возможность Network Extensions.
 
-### Воспроизводимость
+## Идентификаторы и подпись
 
-`MonoVPN/Scripts/build-libbox.sh` фиксирует:
-
-- тег и commit sing-box (при несовпадении commit сборка прерывается);
-- версию gomobile/gobind (`v0.1.13`);
-- Go toolchain через `GOTOOLCHAIN=go1.26.10` (как в CI sing-box);
-- build tags: `with_gvisor,with_utls,with_low_memory,badlinkname,tfogo_checklinkname0` — только то, что нужно (REALITY требует uTLS); без naive/cronet, QUIC, WireGuard, Tailscale-эндпоинтов;
-- флаги линковщика как в `cmd/internal/build_shared` апстрима.
-
-Результат: `Frameworks/Libbox.xcframework` и `Frameworks/LIBBOX_VERSION`. Бинарник (~200 МБ со срезом симулятора) не коммитится. Только для устройства (быстрее):
-
-```bash
-PLATFORMS=ios MonoVPN/Scripts/build-libbox.sh
-```
-
-### Подключение в Xcode
-
-Уже сделано в проекте: `Frameworks/Libbox.xcframework` линкуется только в target `PacketTunnel` (вместе с `NetworkExtension.framework`, `UIKit.framework` и `libresolv.tbd`, которые требуются Go-рантайму). Встраивать (Embed) фреймворк не нужно — он статический.
-
----
-
-## Signing & Capabilities
-
-В targets указана **личная** команда владельца (Individual), выбранная в Xcode → Signing & Capabilities. Команда работодателя не используется. Сменить команду можно вручную в Xcode для каждого target.
-
-Все идентификаторы — в одном месте: `MonoVPN/Config/Identifiers.xcconfig`.
+Все идентификаторы и версии заданы в одном месте — `MonoVPN/Config/Identifiers.xcconfig`.
+Info.plist всех targets и Swift-код (`AppIdentifiers`) читают значения оттуда.
 
 | Параметр | Значение |
 |---|---|
 | Display Name | Mono VPN |
+| Версия / сборка | `MARKETING_VERSION = 1.0.0`, `CURRENT_PROJECT_VERSION = 1` |
 | App Bundle ID | `com.irklch.monovpn` |
 | Packet Tunnel Bundle ID | `com.irklch.monovpn.PacketTunnel` |
 | Widget Bundle ID | `com.irklch.monovpn.Widget` |
 | App Group | `group.com.irklch.monovpn` |
-| Keychain Sharing group | `$(AppIdentifierPrefix)com.irklch.monovpn.shared` |
-| Signing | Automatic, личная команда в настройках targets (`DEVELOPMENT_TEAM` в xcconfig пуст) |
+| Keychain Sharing | `$(AppIdentifierPrefix)com.irklch.monovpn.shared` |
+| Подпись | Automatic; Team ID задан в настройках targets (`DEVELOPMENT_TEAM`) |
 
-Info.plist всех targets получают значения из xcconfig, Swift-код читает их из Info.plist (`AppIdentifiers`). Если идентификатор занят — поменяйте его только в xcconfig.
+У всех трёх targets одинаковые entitlements (`MonoVPN/Config/*.entitlements`): Network
+Extensions → Packet Tunnel, App Groups, Keychain Sharing. Виджету Packet Tunnel нужен, потому
+что он читает состояние `NETunnelProviderManager`.
 
-### Entitlements
-
-`MonoVPN/Config/MonoVPN.entitlements`, `MonoVPN/Config/PacketTunnel.entitlements` и `MonoVPN/Config/Widget.entitlements` (одинаковые):
-
-```xml
-<key>com.apple.developer.networking.networkextension</key>
-<array><string>packet-tunnel-provider</string></array>
-<key>com.apple.security.application-groups</key>
-<array><string>$(MONO_APP_GROUP)</string></array>
-<key>keychain-access-groups</key>
-<array><string>$(AppIdentifierPrefix)$(MONO_BUNDLE_ID).shared</string></array>
-```
-
-Виджету Network Extensions → Packet Tunnel нужен потому, что его App Intent вызывает `NETunnelProviderManager` в собственном процессе. Одного entitlement недостаточно: см. «Виджет» → fallback через приложение.
-
-### После активации личного Apple Developer Program
-
-1. Xcode → Settings → Accounts: добавьте **свой** Apple ID и выберите **личную** команду (не команду работодателя).
-2. Укажите Team ID: либо `DEVELOPMENT_TEAM = XXXXXXXXXX` в `Identifiers.xcconfig`, либо в Xcode → target → Signing & Capabilities для **всех трёх** targets (`MonoVPN`, `PacketTunnel`, `MonoVPNWidget`).
-3. При Automatic Signing Xcode сам зарегистрирует App ID для всех Bundle ID, App Group и Keychain Sharing group в вашей команде. Проверьте на вкладке Signing & Capabilities, что у всех трёх targets есть:
-   - **Network Extensions** → Packet Tunnel;
-   - **App Groups** → `group.com.irklch.monovpn`;
-   - **Keychain Sharing** → `com.irklch.monovpn.shared`.
-4. Если Xcode не раскрывает переменные в entitlements при создании профиля, замените `$(MONO_APP_GROUP)` на литерал `group.com.irklch.monovpn`.
-
-Без подписи (`CODE_SIGNING_ALLOWED=NO`) проект собирается целиком — так ведётся разработка до появления аккаунта.
-
----
-
-## Запуск на физическом iPhone
-
-Packet Tunnel **не работает в симуляторе** — VPN проверяется только на устройстве.
-
-1. Выполните шаги из «Signing & Capabilities».
-2. На iPhone включите «Режим разработчика» (Настройки → Конфиденциальность и безопасность).
-3. Подключите iPhone, выберите его в Xcode и запустите схему `MonoVPN` (⌘R).
-4. В приложении: «Добавить подписку» → вставьте ссылку → «Сохранить» → Play → подтвердите системный запрос «Добавить конфигурацию VPN».
-5. Технические сообщения (`os.Logger`, subsystem `com.irklch.monovpn`) пишутся только в DEBUG-сборке и без адресов, ссылок и учётных данных; в Release-сборке приложение и расширения журналов не ведут.
-6. Отладка extension: Debug → Attach to Process → `PacketTunnel` (после первого запуска туннеля).
-
----
-
-## Internal TestFlight
-
-Выполняется владельцем вручную — загрузки в App Store Connect из этого проекта не производились.
-
-1. Перед загрузкой:
-   - решите лицензионный вопрос (см. ниже) — бинарник, переданный тестировщикам, уже является распространением GPL-кода;
-   - увеличьте `CURRENT_PROJECT_VERSION` в `Identifiers.xcconfig` для каждой новой сборки.
-2. App Store Connect → My Apps → «+» → New App с Bundle ID `com.irklch.monovpn`.
-3. Xcode: схема `MonoVPN`, destination «Any iOS Device (arm64)» → Product → Archive. Перед загрузкой проверьте Privacy Manifest на архиве — манифест в каждом бандле и Required Reason API настоящего iOS-бинарника `PacketTunnel`:
-
-   ```bash
-   MonoVPN/Scripts/check-privacy-manifests.sh ~/Library/Developer/Xcode/Archives/<дата>/MonoVPN*.xcarchive Frameworks/LibXray.xcframework
-   ```
-
-   Затем Distribute App → App Store Connect → Upload.
-4. Export Compliance: приложение использует шифрование (TLS/VPN-протоколы). Ответьте на вопросы в App Store Connect; при необходимости добавьте `ITSAppUsesNonExemptEncryption` в `App-Info.plist`.
-5. TestFlight → Internal Testing → добавьте себя в группу. Internal TestFlight не требует App Review.
-
----
+После смены команды разработчика (например, при переходе на Organization) Team ID меняется в
+настройках всех трёх targets; App ID, App Group и Keychain group регистрируются заново.
 
 ## Подписки и протоколы
 
-### Форматы подписок
+### Форматы
 
 | Формат | Поддержка |
 |---|---|
-| HTTPS URL, тело — список ссылок по одной в строке | ✅ |
-| HTTPS URL, тело — Base64 (стандартный или URL-safe, с/без padding) списка ссылок | ✅ (формат 3x-ui, Marzban, Remnawave и др. для «обычных» клиентов) |
-| Одна ссылка `vless://` / `vmess://` / `trojan://` / `ss://`, вставленная вместо URL | ✅ |
-| HTTP (без TLS) | ❌ отклоняется: токен подписки может быть перехвачен |
-| Clash / Mihomo YAML, sing-box / Xray JSON, HTML | ❌ распознаётся и отклоняется с сообщением |
+| HTTPS, тело — ссылки по одной в строке или Base64 (стандартный / URL-safe) | ✅ |
+| HTTPS, `<адрес>/json` — массив готовых конфигов Xray (Remnawave и подобные панели) | ✅ запрашивается первым |
+| Одна ссылка `vless://` / `vmess://` / `trojan://` / `ss://` вместо адреса | ✅ |
+| HTTP без TLS | ❌ отклоняется: токен подписки мог бы быть перехвачен |
+| Clash / Mihomo YAML, sing-box JSON, HTML | ❌ распознаётся и отклоняется с сообщением |
 
-Запрос подписки отправляется с `User-Agent: MonoVPN/<версия>`. Строки-комментарии (`#`, `//`) и дубликаты пропускаются. Количество серверов не ограничено.
-
-### JSON-подписка Xray
-
-В сборке на Xray-core приложение сначала запрашивает `<адрес подписки>/json` — готовые конфиги Xray, которые панели (Remnawave и подобные) отдают клиентам вроде Streisand. В них есть то, чего нет в ссылках: балансировщики «Авто» с десятками серверов и `burstObservatory`, серверы Hysteria, свои DNS и правила маршрутизации. Если панель JSON не отдаёт, используется обычная подписка со ссылками.
-
-Конфиг сервера запускается почти как есть (`XrayPanelConfiguration`):
-
-- входы `socks`/`http` заменяются встроенным TUN Xray с теми же настройками sniffing; правила, ссылавшиеся на эти входы, — на `tun-in`;
-- DNS-запросы из TUN всегда уходят в outbound `dns` (правило и outbound добавляются, если их нет);
-- ссылки на геобазы (`geosite:`, `geoip:`, `ext:`) убираются — файлов геобаз в сборке нет; `geoip:private` заменяется списком частных сетей; правило или DNS-сервер, у которого не осталось условий, удаляется целиком. Убранные записи видны в диагностике импорта как неприменённые параметры;
-- применяется `XrayConfigurationPolicy` (`MonoVPN/Shared/XrayConfigurationPolicy.swift`): журнал Xray выключен полностью (`access`, `error`, `loglevel` — `none`, `dnsLog: false`); включённый `masterKeyLog` и `debug: true` в параметрах QUIC убираются; в `env` остаются только настройки буферов и протоколов в тех написаниях, которые читает Xray (`xray.buf.readv` / `XRAY_BUF_READV`); поля верхнего уровня приводятся к каноническому написанию. Конфиг с Lua-скриптом (`routing.script`, `dns.script`, `script` маски finalmask) или с одним полем в нескольких написаниях отклоняется и показывается в диагностике импорта. Имена ключей сравниваются так же, как в Go (без учёта регистра ASCII, `ſ` = `s`, `K` = `k`), поэтому написанием ключа ограничения не обойти. Расширение повторно применяет политику перед запуском ядра.
-
-Конфиги занимают мегабайты, поэтому хранятся не в Keychain, а в файле `Application Support/panel-configurations.json` (защита «до первой разблокировки», без резервного копирования). Конфиг выбранного сервера, как и раньше, кладётся в общий Keychain для расширения и виджета. Перед запуском расширение параллельно разрешает имена всех серверов конфига (до 16 одновременно, не дольше 5 с) и подставляет IP, закрепляя SNI/Host именем.
-
-Все распознанные серверы показываются в списке. Серверы, которые подключённое ядро не умеет запускать, неактивны и подписаны «Не поддерживается»; выбрать их нельзя, транспорт другим не подменяется. Подробности (почему сервер не поддерживается, нераспознанные записи, неприменённые параметры) — в «Подписка → Диагностика импорта». Там показываются только имена серверов, названия протоколов/транспортов и имена параметров: без UUID, паролей, значений параметров и URL подписки.
-
-### Протоколы
+### Ссылки
 
 | Протокол | Транспорты | Безопасность |
 |---|---|---|
-| **VLESS** | TCP (RAW; `headerType` пустой/`none`), WebSocket (включая early data `?ed=`), gRPC (gun; `authority` = SNI), HTTP/2, HTTPUpgrade | none, TLS, **REALITY**; flow `xtls-rprx-vision` |
-| **VMess** (v2rayN JSON) | те же | none, TLS |
-| **Trojan** | те же | TLS (по умолчанию), REALITY |
-| **Shadowsocks** (SIP002 и legacy) | TCP/UDP; плагины `obfs-local`/`simple-obfs`, `v2ray-plugin` (websocket) | `2022-blake3-*`, `aes-128/192/256-gcm`, `(x)chacha20-ietf-poly1305` |
+| VLESS (`encryption=none`) | RAW/TCP, WebSocket (с early data `?ed=`), gRPC, HTTPUpgrade, XHTTP | none, TLS, REALITY; flow `xtls-rprx-vision` (только TCP + TLS/REALITY) |
+| VMess (v2rayN JSON) | те же | none, TLS |
+| Trojan | те же | TLS (по умолчанию), REALITY |
+| Shadowsocks (SIP002 и legacy) | TCP/UDP | `2022-blake3-*`, `aes-128-gcm`, `aes-256-gcm`, `(x)chacha20-ietf-poly1305` |
 
-«Не поддерживается» (ограничение sing-box 1.14.4, сервер виден в списке, но неактивен): XHTTP/SplitHTTP (в ядре нет такого транспорта), mKCP, QUIC-транспорт (в сборке нет тега `with_quic`), TCP `headerType=http`, gRPC `authority`, отличающийся от SNI (gRPC lite не умеет задавать их раздельно), VLESS `encryption` ≠ `none`, flow кроме `xtls-rprx-vision`, Vision без TLS/TCP, прочие плагины Shadowsocks и `v2ray-plugin` с `mode=quic`, потоковые шифры Shadowsocks.
+Параметр `fm` (finalmask Xray) поддерживается.
 
-Не распознаются (только в диагностике): битые ссылки и схемы Hysteria/TUIC/WireGuard и прочие.
+Сервер виден в списке как «Не поддерживается»:
+- HTTP/2-транспорт (в Xray-core удалён);
+- mKCP, QUIC-транспорт;
+- TCP `headerType` ≠ `none`;
+- VLESS `encryption` ≠ `none`;
+- flow, отличный от `xtls-rprx-vision`;
+- плагины Shadowsocks (`obfs-local`, `v2ray-plugin`), `aes-192-gcm` и потоковые шифры Shadowsocks.
 
-В диагностике как «Частично применены» (сервер поддерживается): `allowInsecure` (проверка сертификата **никогда** не отключается), `spx` (spiderX REALITY), неизвестный `fp` (заменяется на `chrome`), gRPC `mode=multi` (multi-сервер Xray принимает gun), любые неизвестные параметры.
+Vision на транспортах, отличных от TCP, не применяется — так же поступают эталонные клиенты
+Xray.
 
-Страна сервера не определяется и не угадывается — показываются только имя из конфигурации и протокол.
+«Частично применены» (сервер поддерживается, параметр показан в диагностике):
+- `allowInsecure` — проверка сертификата никогда не отключается;
+- `spx`;
+- неизвестный `fp` — заменяется на `chrome`;
+- gRPC `mode=multi`;
+- прочие неизвестные параметры.
 
-Выбранный сервер сохраняется, даже если провайдер изменил его ссылку (ID сервера — хеш ссылки): выбор переносится на сервер с тем же протоколом, именем, адресом и портом. Импорт и обновление подписки не выполняются одновременно, а результат обновления, завершившегося после удаления подписки, отбрасывается.
+### JSON-подписка
 
-План перехода на Xray-core — в [docs/xray-migration.md](docs/xray-migration.md).
+Конфиг сервера запускается почти как есть (`XrayPanelConfiguration`):
 
----
+- входы `socks`/`http` заменяются встроенным TUN Xray с теми же настройками sniffing;
+- DNS-запросы из TUN всегда уходят в outbound `dns`;
+- ссылки на геобазы (`geosite:`, `geoip:`, `ext:`) убираются, потому что файлов геобаз в
+  сборке нет; `geoip:private` заменяется списком частных сетей; правило без оставшихся
+  условий удаляется;
+- применяется `XrayConfigurationPolicy`.
 
-## Маршрутизация, DNS и утечки
+Конфиги хранятся в файле `Application Support/panel-configurations.json` (защита до первой
+разблокировки, без резервного копирования). Конфиг выбранного сервера кладётся в общий
+Keychain для расширения и виджета. ID сервера зависит от имени, поэтому выбор переживает смену
+ключей и адресов.
 
-Конфигурация sing-box (см. `VPNConfigurationBuilder`):
+### Диагностика импорта
 
-- TUN с адресами IPv4 (`172.19.0.1/30`) **и IPv6** (`fdfe:dcba:9876::1/126`), `auto_route`, `strict_route` → extension устанавливает маршруты по умолчанию `0.0.0.0/0` и `::/0`. IPv6-трафик не обходит туннель, даже если у VPN-сервера нет IPv6 (такие соединения просто не устанавливаются).
-- DNS: системный резолвер направлен на адрес внутри TUN, sing-box перехватывает все DNS-запросы (`hijack-dns`) и отправляет их по DNS-over-HTTPS в `1.1.1.1` **через прокси**. Провайдер сети не видит DNS-запросы; Cloudflare видит их с IP VPN-сервера. Это упомянуто на экране конфиденциальности.
-- Адрес самого VPN-сервера (если это домен) резолвится системным резолвером вне туннеля — иначе подключиться невозможно.
-- Частные сети (LAN, `ip_is_private`) идут напрямую.
-- Логи ядра: уровень `warn`, только в памяти extension, на диск не пишутся.
+«Подписка → Диагностика импорта» показывает:
+- неподдерживаемые серверы с причиной;
+- нераспознанные записи;
+- неприменённые параметры.
 
-**Не реализовано и не проверено:**
+Отображаются только имена серверов, протоколов и параметров — без UUID, паролей, значений
+параметров и адреса подписки. Журналы, сведения о работе туннеля и история обновлений не
+собираются.
 
-- Kill switch: если туннель упал или выключен, трафик идёт напрямую. `includeAllNetworks` не включён (он ломает часть системных сервисов и требует отдельной проверки).
-- iOS может оставить уже установленные до подключения TCP-соединения вне туннеля, а часть служб Apple может обходить VPN.
-- Отсутствие утечек DNS/IPv6 на реальном устройстве **не проверено** — см. чек-лист.
+## Безопасность конфигураций провайдера
 
----
+`MonoVPN/Shared/XrayConfigurationPolicy.swift` применяется при импорте и ещё раз в расширении
+перед запуском ядра:
+
+- **Lua-скрипты не исполняются.** Конфиг с `routing.script`, `dns.script` или `script` маски
+  finalmask отклоняется с понятной причиной.
+- **Журналы выключены.** Журнал Xray заменяется на выключенный (`access`, `error`,
+  `loglevel` — `none`, `dnsLog: false`). Убираются включённый `masterKeyLog` (запись ключей
+  TLS) и `debug: true` в параметрах QUIC.
+- **`env`.** Остаются только настройки буферов и протоколов, в тех написаниях, которые читает
+  Xray (`xray.buf.readv` / `XRAY_BUF_READV`); `xray.tun.fd` задаёт только расширение.
+- **Поля верхнего уровня** приводятся к каноническому написанию. Поле, заданное несколько раз
+  в разном написании, — отказ: неизвестно, какое значение применил бы Xray.
+- **Написанием ключа ограничения не обойти.** Имена ключей сравниваются так же, как в Go:
+  без учёта регистра ASCII, `ſ` = `s`, `K` = `k`.
+
+Убранные параметры видны в диагностике импорта по имени, без значений.
+
+## Маршрутизация и DNS
+
+- **TUN.** Адреса IPv4 `172.19.0.1/30` и IPv6 `fdfe:dcba:9876::1/126`, маршруты по
+  умолчанию `0.0.0.0/0` и `::/0`, MTU 1500. IPv6-трафик не обходит туннель.
+- **DNS.** Системный резолвер направлен на `172.19.0.2` внутри туннеля. Запросы на порт 53
+  перехватываются в outbound `dns` и разрешаются по порядку через `https://1.1.1.1/dns-query`,
+  `https://8.8.8.8/dns-query`, затем `8.8.8.8` (UDP) — всё через прокси. Используются только
+  A-записи (`UseIPv4`). В JSON-конфигах — DNS и правила провайдера.
+- **Частные сети** (`10/8`, `100.64/10`, `127/8`, `169.254/16`, `172.16/12`, `192.168/16`,
+  `::1`, `fc00::/7`, `fe80::/10`) идут напрямую. Остальное — через первый outbound.
+- **Имена VPN-серверов** расширение разрешает системным DNS текущей сети до применения
+  сетевых настроек туннеля: параллельно, до 16 одновременно, не дольше 5 с. SNI/Host
+  закрепляются именем.
+- **Kill switch не реализован** (`includeAllNetworks` выключен): если туннель упал, трафик
+  идёт напрямую.
 
 ## Виджет
 
-Small-виджет на Home Screen: кнопка питания по центру и статус под ней. Фон `#171717`, монохромная иконка `power`, без градиентов и акцентных цветов. В режимах оформления Home Screen (тёмный / тонированный / StandBy) кнопка помечена `widgetAccentable()`, цвета зависят от `widgetRenderingMode`.
+Small-виджет: кнопка питания и статус («Нет сервера», «Отключено», «Подключение…»,
+«Подключено», «Отключение…», «Ошибка подключения»). Статус всегда вычисляется из
+`NEVPNStatus`.
 
-### Архитектура
+- **Кнопка — `ToggleVPNIntent`.** Это `LiveActivityIntent`, поэтому `perform()` выполняется
+  в процессе приложения в фоне, без вывода на передний план. На iOS 26+ дополнительно задан
+  `supportedModes = .background`.
+- **Идемпотентность.** Направление (подключить / отключить) фиксируется при отрисовке, а
+  `TunnelCommand.action` перепроверяет реальный статус, поэтому двойное нажатие не
+  переключит VPN обратно.
+- **Пока VPN-конфигурации нет** (первое подключение) или её не удалось прочитать, нажатие
+  открывает приложение через `monovpn://connect`. Приложение показывает экран «Перед
+  подключением» и системный запрос.
+- **Сервер.** Виджет подключает последний выбранный сервер: его конфигурация лежит в общем
+  Keychain.
+- **Обновление.** Перерисовку запрашивают приложение, App Intent и Packet Tunnel; постоянного
+  опроса нет.
 
-```
-MonoVPN/Widget/ConnectionWidget.swift    WidgetBundle, ConnectionWidget, ConnectionProvider, ToggleVPNIntent, ConnectionWidgetView
-MonoVPN/Widget/Localizable.xcstrings     строки виджета (ru)
-MonoVPN/Shared/TunnelController.swift    общие операции NetworkExtension (app + виджет): load / install / start / stop / waitForStatus
-MonoVPN/Shared/WidgetCommand.swift       TunnelCommand (connect / disconnect), WidgetVPNState, WidgetCommandRunner
-```
+## Данные и конфиденциальность
 
-Второго VPN-менеджера нет: `VPNManager` (приложение) и App Intent виджета вызывают один и тот же `TunnelController`. `HomeViewModel` и `VPNManager` в виджет не входят — они `@MainActor`, зависят от UI и в процессе виджета не существуют.
-
-| Target | Тип | Папки |
+| Данные | Где | Защита |
 |---|---|---|
-| `MonoVPNWidget` | Widget Extension (встраивается в приложение), Bundle ID `com.irklch.monovpn.Widget` | Widget, Shared |
+| Ссылка на подписку, серверы, выбранный сервер, причины несовместимости | Keychain (`app-state.v1`) | `AfterFirstUnlockThisDeviceOnly`, без iCloud |
+| Конфигурация туннеля выбранного сервера | Keychain (`tunnel-configuration.v1`), общая access group | то же |
+| Очищенные тексты последней ошибки туннеля и виджета | Keychain (`last-tunnel-error.v1`, `widget-error.v1`) | то же |
+| Конфиги JSON-подписки | `Application Support/panel-configurations.json` | `completeUntilFirstUserAuthentication`, без резервного копирования |
+| Флаги «экран конфиденциальности принят», «очистка выполнена» | `UserDefaults` приложения | без данных пользователя |
 
-### Как это работает
+- **Журналы не ведутся.** Журнал Xray выключен, файлов диагностики нет, `os.Logger` только
+  в DEBUG-сборке и без адресов, ссылок и учётных данных.
+- **Тексты ошибок** очищаются от UUID, ключей, URL и IP (`TunnelErrorSanitizer`).
+- **Данные прежних версий.** `LegacyDiagnosticsCleanup` при первом запуске удаляет файлы
+  диагностики, настройку подробного журнала и поля отчётов в Keychain, оставшиеся от прежних
+  сборок. Если контейнер App Group или Keychain недоступны, очистка повторяется при следующем
+  запуске.
+- **«Удалить подписку»** удаляет подписку, конфиги, конфигурацию туннеля и тексты ошибок.
+  Записи Keychain в iOS могут пережить удаление приложения, поэтому подписку стоит удалить
+  до удаления приложения.
+- **Сетевые обращения приложения** — только к адресу подписки. VPN-трафик идёт к серверу
+  провайдера, DNS — через него к Cloudflare/Google или к DNS провайдера.
 
-1. **Статус.** `ConnectionProvider.getTimeline` при каждой перезагрузке читает реальный `NEVPNStatus` (`TunnelController.loadManager()`), наличие конфигурации выбранного сервера и последнюю ошибку из Keychain → `WidgetVPNState`: «Нет сервера», «Отключено», «Подключение…», «Подключено», «Отключение…», «Ошибка подключения». Ничего не хранится и не угадывается — «Подключено» показывается только при `NEVPNStatus.connected`.
-2. **Нажатие.** Кнопка — `Button(intent: ToggleVPNIntent(connect:))`. Направление (подключить / отключить) задаётся при отрисовке по текущему статусу. В iOS 17 `perform()` интерактивного виджета выполняется **в процессе Widget Extension**, без открытия приложения.
-3. **Выполнение.** `WidgetCommandRunner.perform` заново читает статус и через `TunnelCommand.action` решает, что делать: `connect` запускает туннель только из Disconnected/Invalid, `disconnect` останавливает только Connecting/Connected/Reasserting. Повторное или двойное нажатие ничего не переключает обратно.
-4. **Запуск.** `startVPNTunnel()` → система запускает Packet Tunnel (отдельный процесс), который берёт конфигурацию из общего Keychain. Intent ждёт подтверждения системы (`NEVPNStatusDidChange`, не дольше 10 с) и запрашивает перезагрузку виджета.
-5. **Синхронизация.** `WidgetCenter.reloadTimelines(ofKind:)` вызывают: App Intent после выполнения, `VPNManager` при каждой смене статуса, `HomeViewModel` при смене сервера/подписки, Packet Tunnel при старте, ошибке и остановке (то есть и при переключении из «Настроек», когда приложение закрыто). Постоянного опроса нет; только в переходных состояниях таймлайн просит одну повторную перезагрузку через 5 с. Приложение при открытии перечитывает статус из системы, поэтому VPN, включённый из виджета, отображается корректно.
+Политика конфиденциальности: <https://irklch.github.io/monovpn-site/privacy/> (ссылка в листе
+«Подписка» и на экране «Перед подключением»). Сверка политики с кодом и оценка App Privacy —
+в [docs/app-store-privacy.md](docs/app-store-privacy.md).
 
-### Последний выбранный сервер
+### Privacy Manifest
 
-Приложение держит в Keychain (`tunnel-configuration.v1`, общая access group) готовую конфигурацию sing-box **выбранного** сервера и обновляет её при выборе сервера, импорте/обновлении подписки и при запуске приложения; при удалении подписки элемент удаляется. Виджет сервер не выбирает: есть этот элемент — подключается именно с ним, нет — показывает «Нет сервера» и не подключается. Packet Tunnel читает тот же элемент.
-
-### Ограничения фонового исполнения
-
-- **Первое подключение — только из приложения.** Создание VPN-конфигурации показывает системный запрос разрешения, его нельзя показать из виджета. Пока конфигурации нет (`needsSetup`), нажатие на виджет открывает приложение через `widgetURL` `monovpn://connect` (документированный механизм; Small-виджет поддерживает один URL на весь виджет). Приложение выполняет идемпотентную команду `connect` (при необходимости сначала экран конфиденциальности). Если VPN уже подключён, команда ничего не делает.
-- После того как конфигурация создана, виджет пытается подключать и отключать VPN **без открытия приложения**: App Intent в процессе Widget Extension вызывает `NETunnelProviderManager.loadAllFromPreferences()` → `startVPNTunnel()` / `stopVPNTunnel()`. Тот же приём использует официальный sing-box-for-apple (`WidgetExtension/WidgetTunnelControl.swift`). Документация Apple описывает `loadAllFromPreferences` как чтение конфигураций «вызывающего приложения», поэтому прямое управление из процесса виджета **на устройстве не подтверждено**.
-- **Fallback через приложение.** `TunnelController.lookupManager()` различает три исхода: конфигурация найдена; чтение удалось, но конфигурации нет (`needsSetup` → «Настройте в приложении»); чтение не удалось (`unavailable` → «Откройте приложение», отказ в доступе `NEVPNError.configurationReadWriteFailed` или системная ошибка). В `needsSetup` и `unavailable` нажатие открывает приложение через `widgetURL` `monovpn://connect`, и подключение выполняет основное приложение. Статус в этих состояниях неизвестен, поэтому «Подключено» не показывается.
-- **Ошибки команды.** Ошибка запуска, остановки (таймаут) или чтения конфигурации сохраняется в Keychain (`widget-error.v1`) → «Ошибка подключения». Ошибка сбрасывается после подтверждённого `.connected` (виджетом или приложением).
-- **Повторные нажатия.** В процессе виджета команды сериализуются (`WidgetCommandGate`): нажатие во время выполнения предыдущего игнорируется. Межпроцессной блокировки между приложением и виджетом NetworkExtension не даёт, поэтому перед каждым действием перечитывается реальный `NEVPNStatus`: уже поднятый туннель повторно не запускается, отключающийся сначала дожидается `.disconnected`.
-- Время выполнения App Intent ограничено системой; ожидание подтверждения — максимум 10 с.
-- WidgetKit не гарантирует мгновенную перерисовку: возможна задержка в несколько секунд, у перезагрузок есть дневной бюджет.
-- Недокументированные способы запуска приложения и обхода фоновых ограничений не используются.
-
-### Подключение Widget Extension
-
-Target уже есть в проекте и встраивается в приложение (Embed Foundation Extensions). После выбора своей команды (см. «Signing & Capabilities») проверьте у `MonoVPNWidget`:
-
-- **App Groups** → `group.com.irklch.monovpn`;
-- **Keychain Sharing** → `com.irklch.monovpn.shared` (виджету нужен доступ к конфигурации выбранного сервера и к ошибке туннеля);
-- **Network Extensions** → Packet Tunnel (виджет вызывает `NETunnelProviderManager` сам; у sing-box-for-apple виджет обходится без этого entitlement, но мы не полагаемся на недокументированное поведение).
-
-### Как добавить виджет на Home Screen
-
-1. Установите приложение, добавьте подписку и **один раз подключитесь из приложения** (разрешите добавление VPN-конфигурации).
-2. Долгое нажатие на пустом месте Home Screen → «Изменить» → «Добавить виджет».
-3. Найдите Mono VPN, выберите маленький виджет → «Добавить виджет».
-
-### Чек-лист тестирования виджета
-
-- [ ] Без подписки: «Нет сервера», нажатие на кнопку не подключает.
-- [ ] Подписка есть, VPN ни разу не подключался: «Отключено», нажатие открывает приложение и запускает подключение (после экрана конфиденциальности и системного запроса).
-- [ ] Приложение закрыто (выгружено из переключателя): нажатие → «Подключение…» → «Подключено», приложение **не** открывается.
-- [ ] Повторное нажатие → «Отключение…» → «Отключено».
-- [ ] Двойное быстрое нажатие не переключает VPN обратно.
-- [ ] Подключено из приложения → виджет показывает «Подключено» и отключает VPN.
-- [ ] Прямое управление из виджета не работает (ошибка доступа к конфигурации) → «Откройте приложение», нажатие открывает приложение; «Подключено» не показывается.
-- [ ] Смена сервера при активном VPN: если старый туннель не остановился, выбор сервера не меняется и показывается ошибка.
-- [ ] Подключено из виджета → приложение при открытии показывает «Подключено» и верное время.
-- [ ] Сменить сервер в приложении → подключение из виджета идёт к новому серверу.
-- [ ] Неверный сервер → «Ошибка подключения», нет ложного «Подключено».
-- [ ] VPN включён/выключен в «Настройки → VPN» → виджет обновился.
-- [ ] Удаление подписки → «Нет сервера».
-- [ ] Тёмный и тонированный режимы Home Screen, StandBy — кнопка и текст читаемы.
-- [ ] Память и время ответа виджета (Xcode → Debug → Attach to Process → `MonoVPNWidget`).
-
----
-
-## Иконка приложения
-
-- **Источник:** утверждённый фрейм «AppIcon — 1024 × 1024» (node `1:6`) в Figma-файле `RZskmuzbaj8GxhoNVZjLU0`. Экспортирован через Figma MCP в PNG 1024 × 1024 как есть: фон `#171717`, белая строчная «m» и точка — так в утверждённом макете.
-- Альфа-канал из экспорта удалён без изменения пикселей (все пиксели исходника непрозрачны), потому что App Store не принимает иконку с альфа-каналом. Углы не скруглены — это делает iOS.
-- Файл: `MonoVPN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` (единственный размер, остальные Xcode генерирует сам). Назначена target `MonoVPN` через `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`; в собранном приложении есть `CFBundleIconName = AppIcon`.
-
-**Замена иконки:** экспортируйте новый фрейм 1024 × 1024 в PNG без прозрачности (sRGB, без скругления) и замените `AppIcon-1024.png` с тем же именем, `Contents.json` менять не нужно. Если в экспорте есть альфа-канал, уберите его (например, экспортом в JPEG и обратно в PNG или в редакторе) — иначе загрузка в App Store Connect завершится ошибкой.
-
----
-
-## Результаты технического ревью
-
-| # | Что проверено | Результат |
+| Target | Категория | Причина |
 |---|---|---|
-| 1 | Signing & Capabilities трёх targets | App: NE + App Groups + Keychain Sharing; PacketTunnel: то же; Widget: App Groups + Keychain Sharing. Team не указан |
-| 2 | Раскрытие App Group и Keychain group | Значения из `Identifiers.xcconfig` попадают в entitlements и Info.plist. `$(AppIdentifierPrefix)` существует только в подписанной сборке; в неподписанной используется keychain самого процесса (общий доступ для VPN там и не нужен — NE без подписи не работает) |
-| 3 | Совместный доступ к Keychain | Одна access group `<TEAM>.com.irklch.monovpn.shared` у всех трёх targets, `AfterFirstUnlockThisDeviceOnly` |
-| 4 | Последний выбранный сервер | **Исправлено:** конфигурация выбранного сервера раньше попадала в Keychain только при подключении; теперь синхронизируется при выборе, обновлении подписки и запуске — виджет всегда стартует выбранный сервер |
-| 5 | Восстановление `NETunnelProviderManager` | Поиск по `providerBundleIdentifier`. **Исправлено:** изменение статуса до загрузки менеджера (например, VPN включили из виджета) теперь вызывает загрузку |
-| 6 | Конкурентные старт/стоп | Ожидание подтверждения отключения переведено с опроса каждые 200 мс на `NEVPNStatusDidChange`. **Исправлено:** удаление подписки могло не остановить VPN, если в этот момент выполнялось другое действие |
-| 7 | Смена сервера во время подключения | Остановка → ожидание `.disconnected` → запуск с новой конфигурацией |
-| 8 | Двойной запуск | В приложении `isPerformingAction` + блокировка в переходных состояниях; команды виджета идемпотентны |
-| 9 | Ошибки Packet Tunnel | Ошибка старта сохраняется в Keychain и показывается в приложении и виджете; туннель перезагружает виджет при ошибке |
-| 10 | Синхронизация виджета | Только `NEVPNStatus`, см. «Как это работает» |
-| 11 | Локализация в виджете | **Исправлено:** тексты ошибок VPN перенесены в общую таблицу `Tunnel.xcstrings`, иначе в виджете были бы видны ключи. У виджета свой `Localizable.xcstrings` |
-| 12 | Лицензия sing-box | Без изменений: GPL-3.0 остаётся блокером распространения (см. ниже). Логика виджета повторяет подход GPL-кода sing-box-for-apple |
+| MonoVPN | UserDefaults | `CA92.1`, `1C8F.1` |
+| PacketTunnel | FileTimestamp | `C617.1` (рантайм Go в libXray) |
+| PacketTunnel | SystemBootTime | `35F9.1` (рантайм Go в libXray) |
+| MonoVPNWidget | — | — |
 
----
+Во всех трёх манифестах `NSPrivacyTracking = false` и пустой `NSPrivacyCollectedDataTypes`.
+Причины для PacketTunnel основаны на проверке darwin/arm64-сборки тех же исходников и
+подтверждаются на собранном iOS-архиве:
 
-## Лицензионные требования
+```bash
+MonoVPN/Scripts/check-privacy-manifests.sh <archive>.xcarchive Frameworks/LibXray.xcframework
+```
 
-**Это блокер для распространения, который должен решить владелец (желательно с юристом).**
+## Лицензии
 
-- sing-box распространяется под **GPL-3.0-or-later** с дополнительным условием: производные работы не могут использовать имя sing-box или подразумевать связь с ним без согласия автора. Mono VPN не использует имя sing-box в названии и интерфейсе.
-- Libbox статически линкуется в extension, а extension входит в приложение. Распространяемое приложение является производной работой → **всё приложение должно распространяться на условиях GPL-3.0, с предоставлением исходного кода** получателям (включая тестировщиков TestFlight).
-- Совместимость GPL-3.0 с условиями App Store спорна (FSF считает дополнительные ограничения App Store несовместимыми с GPL; известен случай удаления VLC в 2011 году). То, что официальный клиент sing-box есть в App Store, не аргумент: его публикует сам правообладатель.
-- `TunnelPlatformInterface` написан по образцу sing-box-for-apple (GPL-3.0).
-- GPL-3.0 §5(d) требует показывать в интерактивном интерфейсе Appropriate Legal Notices — экрана лицензий в MVP нет, его нужно добавить до распространения.
+- **Состав.** Сторонний код — только libXray и его Go-зависимости, статически слинкованные в
+  PacketTunnel: 48 модулей Go и стандартная библиотека Go.
+- **Лицензии:** MPL-2.0 (Xray-core, REALITY, gopher-luar), LGPL-3.0 со static linking
+  exception (juju/ratelimit), Apache-2.0, BSD, MIT. GPL-кода в сборке нет.
+- **Где показаны.** Полные тексты, уведомления об авторских правах и ссылки на исходный код
+  использованных версий — на экране «Подписка → Лицензии» и в
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **Обновление.** После смены версий libXray / Xray-core выполните:
 
-Варианты:
+  ```bash
+  MonoVPN/Scripts/generate-third-party-notices.sh
+  ```
 
-1. **Открыть исходный код Mono VPN под GPL-3.0** (публичный репозиторий, файл LICENSE, экран лицензий) и принять риск, связанный с условиями App Store. Проще всего технически.
-2. Получить у автора sing-box отдельную (коммерческую) лицензию.
-3. Заменить ядро на проект с совместимой с закрытым кодом лицензией (например, Xray-core — MPL-2.0, файловый copyleft) — потребует новой интеграции и проверки.
+Разбор обязательств при распространении через App Store — в [docs/licensing.md](docs/licensing.md).
 
-Закрытый исходный код + App Store с текущим ядром — **не рекомендуется**.
+## Публикация в App Store
 
----
+1. **Аккаунт.** Guideline 5.4: VPN-приложения публикуются разработчиком, зарегистрированным
+   как организация. С Individual-аккаунтом публикация, скорее всего, будет отклонена.
+2. **App Store Connect:**
+   - Privacy Policy URL — <https://irklch.github.io/monovpn-site/privacy/>;
+   - Support URL — `…/monovpn-site/support/`;
+   - App Privacy — «Data Not Collected», Tracking — No (обоснование в
+     [docs/app-store-privacy.md](docs/app-store-privacy.md)).
+3. **Export Compliance.** В `App-Info.plist` задан `ITSAppUsesNonExemptEncryption = YES`.
+   Ответы на вопросы и решение по Франции — в [docs/export-compliance.md](docs/export-compliance.md).
+4. **Регионы.** Исключить China mainland; принять решение по России и Франции.
+5. **App Review Notes** на английском:
+   - тестовая подписка с долгим сроком действия;
+   - пояснение, что это клиент для подписок сторонних провайдеров, без своих серверов и сбора
+     данных, на `NETunnelProviderManager`.
+6. **Архив и проверка.**
+   - Увеличить `CURRENT_PROJECT_VERSION` для каждой загрузки.
+   - Archive для «Any iOS Device (arm64)».
+   - Запустить проверку манифестов:
+     ```bash
+     MonoVPN/Scripts/check-privacy-manifests.sh <archive>.xcarchive Frameworks/LibXray.xcframework
+     ```
+   - Затем Distribute App → App Store Connect.
 
 ## Известные ограничения
 
-- VPN-подключение, работа в фоне и при заблокированном экране, смена сети, отсутствие утечек — **не проверены** (нет платного аккаунта и физического устройства в окружении разработки).
-- Потребление памяти extension не измерено; лимит iOS для Packet Tunnel ~50 МБ.
-- Одна подписка; автоматического обновления по расписанию нет (только вручную).
-- Энергосбережение Libbox при выключенном экране (`pause`/`recordScreenState`) не подключено — туннель всегда активен.
-- Виджет не проверен на устройстве: управление VPN из процесса Widget Extension, время отклика, работа при закрытом приложении. Отображение иконки на SpringBoard визуально не проверялось (проверено наличие в сборке).
-- Английская локализация не добавлена: структура готова (String Catalog, `knownRegions` включает `en`), достаточно добавить переводы в `Resources/Localizable.xcstrings`, `Widget/Localizable.xcstrings` и `Shared/Tunnel.xcstrings`.
-- Ошибка старта туннеля передаётся в приложение через общий Keychain; текст ошибок ядра — на английском.
+- Kill switch нет; после падения туннеля трафик идёт напрямую. iOS может оставить уже
+  установленные TCP-соединения вне туннеля, часть служб Apple может обходить VPN.
+- Одна подписка; автоматического обновления по расписанию нет.
+- Память Packet Tunnel ограничена iOS (~50 МБ); libXray на iOS сам ограничивает память Go.
+- Только русская локализация; структура String Catalog готова для других языков.
+- Тексты ошибок ядра — на английском, они приходят из Xray.
+- Записи Keychain могут сохраниться после удаления приложения, если подписку не удалили.
 
----
-
-## Ограничения Apple для VPN-приложений
-
-- App Store Review Guideline **5.4**: приложения, предоставляющие VPN-сервисы, должны публиковаться разработчиком, зарегистрированным **как организация**. Публикация Mono VPN в App Store с Individual-аккаунта **не обещается** и, скорее всего, будет отклонена.
-- VPN-приложения обязаны использовать `NEVPNManager` API, не продавать и не раскрывать пользовательские данные третьим лицам, иметь политику конфиденциальности (для App Store потребуется опубликованный URL политики).
-- Возможность Network Extension (Packet Tunnel) требует платного членства в Apple Developer Program; бесплатный Personal Team её не даёт.
-- Packet Tunnel Provider не запускается в iOS Simulator.
-- Память Packet Tunnel extension ограничена системой (~50 МБ); при превышении iOS завершает extension.
-- В некоторых странах (например, в Китае) VPN-приложения требуют дополнительного разрешения регулятора; распространение по регионам настраивается в App Store Connect.
-
----
-
-## Чек-лист ручного тестирования VPN
-
-Устройство: iPhone с iOS 17+, тестовая подписка от провайдера.
+## Чек-лист ручного тестирования
 
 **Подписка**
-- [ ] Вставка HTTPS-ссылки кнопкой «Вставить» и вручную; импорт Base64-подписки; импорт одиночной `vless://`.
+- [ ] Импорт HTTPS-подписки (ссылки, Base64), JSON-подписки панели и одиночной `vless://`.
 - [ ] HTTP-ссылка, мусорный текст, Clash YAML → понятная ошибка, текущая подписка не меняется.
-- [ ] Обновление подписки в режиме полёта → ошибка, серверы и выбор сохранены.
+- [ ] Обновление в режиме полёта → ошибка, серверы и выбор сохранены.
 - [ ] Полная ссылка подписки нигде не отображается (только домен).
-- [ ] Удаление подписки при активном VPN: подтверждение → VPN отключается → серверы исчезают, кнопка Play недоступна.
+- [ ] Удаление подписки при активном VPN: подтверждение → VPN отключается → серверы исчезают.
+- [ ] Конфиг с Lua-скриптом или полем в двух написаниях → сервер в «Не распознаны» с причиной.
 
 **Подключение**
-- [ ] Первое подключение: экран конфиденциальности → системный запрос VPN. Отказ → понятная ошибка; повторная попытка работает.
-- [ ] Статусы: Подключение → Подключено, секундомер стартует только после Connected.
-- [ ] Повторные быстрые нажатия Play/Stop не ломают состояние.
-- [ ] Отключение: Stop → Отключение → Отключено, секундомер `00:00:00`.
-- [ ] Неверный сервер (неверный UUID / недоступный хост) → ошибка, нет ложного «Подключено».
-- [ ] Каждый тип сервера: VLESS REALITY, VLESS TLS (WS/gRPC), VMess, Trojan, Shadowsocks.
+- [ ] Первое подключение: экран «Перед подключением» (ссылка на политику открывается) →
+      системный запрос VPN; отказ → понятная ошибка.
+- [ ] Статусы и таймер; повторные быстрые нажатия не ломают состояние.
+- [ ] Неверный сервер → ошибка, нет ложного «Подключено».
+- [ ] VLESS REALITY, VLESS TLS (WS/gRPC/XHTTP), VMess, Trojan, Shadowsocks, сервер из JSON-подписки.
+- [ ] Смена сервера при подключении → переподключение к новому серверу.
 
-**Состояние и время**
-- [ ] Свернуть приложение на 5 минут → время корректное.
-- [ ] Закрыть приложение из переключателя → открыть → статус и время восстановлены.
-- [ ] Включение/выключение VPN из «Настройки → VPN» отражается в приложении.
-- [ ] Смена сервера при активном подключении → переподключение к новому серверу.
-- [ ] Выбранный сервер сохраняется после перезапуска.
+**Фон, сеть, виджет**
+- [ ] Блокировка экрана 10+ минут, Wi-Fi ↔ сотовая, режим полёта, перезагрузка → подключение из «Настроек».
+- [ ] Виджет: подключение/отключение при закрытом приложении, двойное нажатие, «Нет сервера» без подписки.
+- [ ] Первое подключение из виджета открывает приложение и показывает экран «Перед подключением».
 
-**Фон и сеть**
-- [ ] Заблокировать экран на 10+ минут → трафик идёт (например, загрузка в фоне), VPN остаётся подключённым.
-- [ ] Переключение Wi-Fi ↔ сотовая сеть → соединение восстанавливается (статус Reasserting/Connected).
-- [ ] Режим полёта вкл/выкл.
-- [ ] Перезагрузка iPhone → подключение из «Настроек» без открытия приложения.
-
-**Утечки и приватность**
-- [ ] IP на ipleak.net / browserleaks.com = IP VPN-сервера.
-- [ ] DNS leak test: нет DNS-серверов провайдера сети.
-- [ ] IPv6 test (test-ipv6.com) в сети с IPv6: нет реального IPv6-адреса устройства.
-- [ ] Console.app: в логах нет ссылок подписки, UUID, паролей, ключей.
-- [ ] Память extension (Xcode → Debug Navigator при attach к `PacketTunnel`) под нагрузкой (видео, загрузки) < 50 МБ.
+**Конфиденциальность и юридическое**
+- [ ] ipleak.net / dnsleaktest.com: IP и DNS — не провайдера сети; test-ipv6.com — нет реального IPv6.
+- [ ] Console.app у Release-сборки: нет сообщений subsystem `com.irklch.monovpn`.
+- [ ] «Подписка → Политика конфиденциальности» открывает страницу; «Лицензии» — список
+      компонентов, тексты раскрываются, ссылки на исходный код открываются.
+- [ ] Обновление со сборки прежней версии: файлов `Tunnel/diagnostics.json` и `Tunnel/xray-error.log` нет.

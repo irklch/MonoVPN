@@ -75,12 +75,14 @@ struct AppStateStore: Sendable {
         try storage.remove(.tunnelConfiguration)
     }
 
-    /// Удаляет все данные приложения из Keychain: состояние, конфигурацию и последнюю ошибку.
+    /// Удаляет все данные подписки: конфиги JSON-подписки (файл) и из Keychain — состояние,
+    /// конфигурацию туннеля и последние ошибки туннеля и виджета.
     func removeAll() throws {
         try panelStore.removeAll()
         try storage.remove(.appState)
         try storage.remove(.tunnelConfiguration)
         try storage.remove(.lastTunnelError)
+        try storage.remove(.widgetError)
     }
 }
 

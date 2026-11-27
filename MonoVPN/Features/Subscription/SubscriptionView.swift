@@ -12,6 +12,8 @@ struct SubscriptionView: View {
     @State private var isDeleteConfirmationPresented = false
     /// Показано ли окно с причинами недоступности серверов.
     @State private var isDiagnosticsPresented = false
+    /// Показано ли окно лицензий сторонних компонентов.
+    @State private var isLicensesPresented = false
     /// Фокус поля ввода; снимается перед сохранением, чтобы скрыть клавиатуру.
     @FocusState private var isFieldFocused: Bool
 
@@ -91,6 +93,9 @@ struct SubscriptionView: View {
                         .padding(.top, 8)
                     }
                 }
+
+                legalLinks
+                    .padding(.top, model.subscription == nil ? 8 : 0)
             }
             .padding(.horizontal, Mono.Metrics.screenPadding)
             .padding(.bottom, 32)
@@ -100,6 +105,9 @@ struct SubscriptionView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
+        .sheet(isPresented: $isLicensesPresented) {
+            LicensesView()
+        }
         .sheet(isPresented: $isDiagnosticsPresented) {
             if let subscription = model.subscription {
                 ImportDiagnosticsView(subscription: subscription)
@@ -119,6 +127,27 @@ struct SubscriptionView: View {
             Button("common.cancel", role: .cancel) {}
         } message: {
             Text("subscription.delete.message")
+        }
+    }
+
+    /// Политика конфиденциальности и лицензии — в том же стиле, что и ссылка на диагностику импорта.
+    private var legalLinks: some View {
+        VStack(spacing: 0) {
+            Link(destination: LegalLinks.privacyPolicy) {
+                Text("legal.privacyPolicy")
+                    .font(.footnote)
+                    .foregroundStyle(Mono.Palette.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            Button {
+                isLicensesPresented = true
+            } label: {
+                Text("legal.licenses")
+                    .font(.footnote)
+                    .foregroundStyle(Mono.Palette.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.plain)
         }
     }
 

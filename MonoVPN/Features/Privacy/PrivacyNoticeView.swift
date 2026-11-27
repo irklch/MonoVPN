@@ -7,7 +7,8 @@ struct PrivacyNoticeView: View {
     /// Закрывает окно по кнопке «Отмена».
     @Environment(\.dismiss) private var dismiss
 
-    /// Заголовок, четыре пункта о том, как приложение обращается с данными, и кнопки принять / отмена.
+    /// Заголовок, четыре пункта о том, как приложение обращается с данными, ссылка на политику
+    /// конфиденциальности и кнопки принять / отмена.
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeader(title: "privacy.title") {
@@ -22,6 +23,14 @@ struct PrivacyNoticeView: View {
                     item("arrow.triangle.branch", "privacy.item.traffic")
                     item("eye.slash", "privacy.item.noTracking")
                     item("key", "privacy.item.storage")
+                    Link(destination: LegalLinks.privacyPolicy) {
+                        Text("legal.privacyPolicy")
+                            .font(.footnote)
+                            .foregroundStyle(Mono.Palette.secondary)
+                            .underline()
+                            .frame(minHeight: 44, alignment: .leading)
+                    }
+                    .padding(.leading, 42)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 24)

@@ -628,6 +628,105 @@
         }
       }
     },
+    "legal.licenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензии"
+          }
+        }
+      }
+    },
+    "legal.privacyPolicy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Политика конфиденциальности"
+          }
+        }
+      }
+    },
+    "licenses.archive": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходный код этой версии (архив)"
+          }
+        }
+      }
+    },
+    "licenses.hideText": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть текст лицензии"
+          }
+        }
+      }
+    },
+    "licenses.intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mono VPN использует программное обеспечение с открытым исходным кодом: Xray-core и его зависимости. Компоненты не изменены. Ниже — их лицензии, уведомления об авторских правах и ссылки на исходный код использованных версий."
+          }
+        }
+      }
+    },
+    "licenses.showText": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать текст лицензии"
+          }
+        }
+      }
+    },
+    "licenses.source": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходный код"
+          }
+        }
+      }
+    },
+    "licenses.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензии"
+          }
+        }
+      }
+    },
+    "licenses.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось загрузить список лицензий."
+          }
+        }
+      }
+    },
     "privacy.accept": {
       "extractionState": "manual",
       "localizations": {
