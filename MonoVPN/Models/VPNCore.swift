@@ -24,6 +24,10 @@ enum VPNCore: String, Codable, Sendable {
     /// Есть ли транспорт XHTTP (SplitHTTP).
     var supportsXHTTP: Bool { self == .xray }
 
+    /// Есть ли `finalmask` Xray (параметр ссылки `fm`): фрагментация TLS ClientHello и
+    /// другие маски поверх транспорта. В sing-box аналога нет — параметр не применяется.
+    var supportsFinalMask: Bool { self == .xray }
+
     /// Можно ли задать gRPC `:authority` независимо от SNI.
     var supportsIndependentGRPCAuthority: Bool { self == .xray }
 

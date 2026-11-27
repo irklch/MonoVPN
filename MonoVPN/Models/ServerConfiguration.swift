@@ -109,6 +109,9 @@ struct ServerConfiguration: Codable, Hashable, Identifiable, Sendable {
     var grpcAuthority: String?
     /// Дополнительные параметры XHTTP (`extra` из ссылки) — JSON-объект как есть (только ядро Xray).
     var xhttpExtra: String?
+    /// `finalmask` Xray из параметра ссылки `fm` — JSON-объект как есть, например
+    /// фрагментация TLS ClientHello против DPI (только ядро Xray).
+    var finalMask: String?
     /// Параметры TLS; `nil` — соединение без TLS.
     var tls: TLSSettings?
 

@@ -110,6 +110,30 @@ struct XrayConfigurationTests {
         #expect((stream["realitySettings"] as? [String: Any])?["serverName"] as? String == "edge.example.com")
     }
 
+    /// `fm` из ссылки (фрагментация TLS ClientHello) попадает в `streamSettings.finalmask` как есть.
+    @Test func finalMaskFromLink() throws {
+        let mask = #"{"tcp":[{"type":"fragment","settings":{"length":"10-20","packets":"tlshello","interval":"10-20"}}]}"#
+        let encoded = try #require(mask.addingPercentEncoding(withAllowedCharacters: .alphanumerics))
+        let link = "vless://\(Fixture.uuid)@203.0.113.10:443?security=reality&sni=www.example.com&fp=qq"
+            + "&pbk=\(Fixture.realityKey)&sid=6ba85179e30d4fc2&type=tcp&flow=xtls-rprx-vision&spx=%2F&fm=\(encoded)#NL"
+        let server = try ProxyLinkParser.parse(link)
+        #expect(server.isSupported)
+        #expect(server.finalMask == mask)
+        #expect(!server.ignoredParameters.contains("fm"))
+
+        let (_, stream) = try proxy(decode(XrayConfigurationBuilder.build(for: server)))
+        let tcp = try #require(((stream["finalmask"] as? [String: Any])?["tcp"] as? [[String: Any]])?.first)
+        #expect(tcp["type"] as? String == "fragment")
+        #expect((tcp["settings"] as? [String: Any])?["packets"] as? String == "tlshello")
+        #expect((stream["realitySettings"] as? [String: Any])?["fingerprint"] as? String == "qq")
+
+        // Не JSON-объект — параметр не применяется, сервер остаётся доступным.
+        let broken = try ProxyLinkParser.parse(link.replacingOccurrences(of: "fm=\(encoded)", with: "fm=oops"))
+        #expect(broken.isSupported)
+        #expect(broken.finalMask == nil)
+        #expect(broken.ignoredParameters.contains("fm"))
+    }
+
     /// WebSocket с early data и TLS; HTTP/2 и плагины Shadowsocks в Xray не поддерживаются.
     @Test func otherTransportsAndLimitations() throws {
         var ws = ServerConfiguration(id: "w", name: "W", proxyProtocol: .vless, host: "example.org", port: 443, uuid: Fixture.uuid)

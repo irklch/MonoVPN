@@ -178,6 +178,7 @@ enum ProxyLinkParser {
                 throw ProxyLinkError.unsupportedEncryption(String(encryption.split(separator: ".").first ?? ""))
             }
             try applyTransport(from: &query, to: &server)
+            applyFinalMask(from: &query, to: &server)
             server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
             try applyGRPCAuthority(from: &query, to: &server)
 
@@ -214,6 +215,7 @@ enum ProxyLinkParser {
         )
         try applyCoreFeatures(to: &server) { server in
             try applyTransport(from: &query, to: &server)
+            applyFinalMask(from: &query, to: &server)
             // Trojan по определению работает через TLS, если это явно не отключено.
             server.tls = try tls(from: &query, defaultSecurity: "tls", ignored: &server.ignoredParameters)
             try applyGRPCAuthority(from: &query, to: &server)
@@ -285,6 +287,7 @@ enum ProxyLinkParser {
         )
         try applyCoreFeatures(to: &server) { server in
             try applyTransport(from: &query, to: &server)
+            applyFinalMask(from: &query, to: &server)
             server.tls = try tls(from: &query, defaultSecurity: "none", ignored: &server.ignoredParameters)
             try applyGRPCAuthority(from: &query, to: &server)
         }
@@ -360,6 +363,7 @@ enum ProxyLinkParser {
             if let plugin = query.removeValue(forKey: "plugin"), !plugin.isEmpty {
                 try applyShadowsocksPlugin(plugin, to: &server)
             }
+            applyFinalMask(from: &query, to: &server)
         }
         server.ignoredParameters += remainingParameters(query)
         return server
@@ -397,6 +401,22 @@ enum ProxyLinkParser {
             server = candidate
         } catch let error as ProxyLinkError where error.isCoreLimitation {
             server.incompatibility = error
+        }
+    }
+
+    /// Применяет `fm` — `finalmask` Xray (JSON-объект), например фрагментацию TLS ClientHello:
+    /// `{"tcp":[{"type":"fragment","settings":{"packets":"tlshello",...}}]}`.
+    ///
+    /// Без фрагментации DPI может обрывать соединение с сервером по SNI: Xray подключается,
+    /// но ответа нет. В ядре без `finalmask` и при некорректном JSON параметр попадает
+    /// в неприменённые (сервер остаётся доступным).
+    private static func applyFinalMask(from query: inout [String: String], to server: inout ServerConfiguration) {
+        guard VPNCore.current.supportsFinalMask, let raw = query["fm"], !raw.isEmpty else { return }
+        query.removeValue(forKey: "fm")
+        if let data = raw.data(using: .utf8), (try? JSONSerialization.jsonObject(with: data)) is [String: Any] {
+            server.finalMask = raw
+        } else {
+            server.ignoredParameters.append("fm")
         }
     }
 

@@ -188,6 +188,12 @@ enum XrayConfigurationBuilder {
             stream["xhttpSettings"] = xhttp
         }
 
+        if let finalMask = server.finalMask,
+           let data = finalMask.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            stream["finalmask"] = object
+        }
+
         if let tls = server.tls {
             let serverName = tls.serverName ?? domain
             if let reality = tls.reality {
