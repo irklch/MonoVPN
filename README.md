@@ -228,7 +228,13 @@ Packet Tunnel **не работает в симуляторе** — VPN пров
    - решите лицензионный вопрос (см. ниже) — бинарник, переданный тестировщикам, уже является распространением GPL-кода;
    - увеличьте `CURRENT_PROJECT_VERSION` в `Identifiers.xcconfig` для каждой новой сборки.
 2. App Store Connect → My Apps → «+» → New App с Bundle ID `com.irklch.monovpn`.
-3. Xcode: схема `MonoVPN`, destination «Any iOS Device (arm64)» → Product → Archive → Distribute App → App Store Connect → Upload.
+3. Xcode: схема `MonoVPN`, destination «Any iOS Device (arm64)» → Product → Archive. Перед загрузкой проверьте Privacy Manifest на архиве — манифест в каждом бандле и Required Reason API настоящего iOS-бинарника `PacketTunnel`:
+
+   ```bash
+   MonoVPN/Scripts/check-privacy-manifests.sh ~/Library/Developer/Xcode/Archives/<дата>/MonoVPN*.xcarchive Frameworks/LibXray.xcframework
+   ```
+
+   Затем Distribute App → App Store Connect → Upload.
 4. Export Compliance: приложение использует шифрование (TLS/VPN-протоколы). Ответьте на вопросы в App Store Connect; при необходимости добавьте `ITSAppUsesNonExemptEncryption` в `App-Info.plist`.
 5. TestFlight → Internal Testing → добавьте себя в группу. Internal TestFlight не требует App Review.
 
@@ -257,7 +263,7 @@ Packet Tunnel **не работает в симуляторе** — VPN пров
 - входы `socks`/`http` заменяются встроенным TUN Xray с теми же настройками sniffing; правила, ссылавшиеся на эти входы, — на `tun-in`;
 - DNS-запросы из TUN всегда уходят в outbound `dns` (правило и outbound добавляются, если их нет);
 - ссылки на геобазы (`geosite:`, `geoip:`, `ext:`) убираются — файлов геобаз в сборке нет; `geoip:private` заменяется списком частных сетей; правило или DNS-сервер, у которого не осталось условий, удаляется целиком. Убранные записи видны в диагностике импорта как неприменённые параметры;
-- применяется `XrayConfigurationPolicy` (`MonoVPN/Shared/XrayConfigurationPolicy.swift`): журнал Xray выключен полностью (`access`, `error`, `loglevel` — `none`, `dnsLog: false`); `masterKeyLog`, `debug` в параметрах QUIC и переменные `env`, кроме настроек буферов и протоколов, убираются; конфиг с Lua-скриптом (`routing.script`, `dns.script`, `script` маски finalmask) отклоняется и показывается в диагностике импорта. Расширение повторно применяет политику перед запуском ядра.
+- применяется `XrayConfigurationPolicy` (`MonoVPN/Shared/XrayConfigurationPolicy.swift`): журнал Xray выключен полностью (`access`, `error`, `loglevel` — `none`, `dnsLog: false`); включённый `masterKeyLog` и `debug: true` в параметрах QUIC убираются; в `env` остаются только настройки буферов и протоколов в тех написаниях, которые читает Xray (`xray.buf.readv` / `XRAY_BUF_READV`); поля верхнего уровня приводятся к каноническому написанию. Конфиг с Lua-скриптом (`routing.script`, `dns.script`, `script` маски finalmask) или с одним полем в нескольких написаниях отклоняется и показывается в диагностике импорта. Имена ключей сравниваются так же, как в Go (без учёта регистра ASCII, `ſ` = `s`, `K` = `k`), поэтому написанием ключа ограничения не обойти. Расширение повторно применяет политику перед запуском ядра.
 
 Конфиги занимают мегабайты, поэтому хранятся не в Keychain, а в файле `Application Support/panel-configurations.json` (защита «до первой разблокировки», без резервного копирования). Конфиг выбранного сервера, как и раньше, кладётся в общий Keychain для расширения и виджета. Перед запуском расширение параллельно разрешает имена всех серверов конфига (до 16 одновременно, не дольше 5 с) и подставляет IP, закрепляя SNI/Host именем.
 

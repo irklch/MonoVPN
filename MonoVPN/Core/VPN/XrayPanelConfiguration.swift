@@ -57,14 +57,14 @@ enum XrayPanelConfiguration {
     /// Адаптирует разобранный конфиг панели.
     static func adapt(_ original: [String: Any]) throws -> Adapted {
         var root = original
+        root.removeValue(forKey: "remarks")
+        // Скрипты, журналы, запись ключей TLS, отладка и написание полей верхнего уровня —
+        // до любых других изменений: дальше поля читаются по каноническим именам.
+        let policy = try XrayConfigurationPolicy.sanitize(root)
+        root = policy.root
         guard var outbounds = root["outbounds"] as? [[String: Any]], !outbounds.isEmpty else {
             throw Failure.noOutbounds
         }
-        root.removeValue(forKey: "remarks")
-        // Скрипты, журналы, запись ключей TLS, отладка: до любых других изменений.
-        let policy = try XrayConfigurationPolicy.sanitize(root)
-        root = policy.root
-        outbounds = root["outbounds"] as? [[String: Any]] ?? outbounds
         var dropped = Set(policy.droppedParameters)
 
         // Входы: только наш TUN; sniffing — как у входов панели (нужен для правил по доменам).

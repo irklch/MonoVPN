@@ -239,8 +239,8 @@ enum TunnelConfigurationBuilder {
     /// Конфигурация туннеля для сервера: JSON sing-box или Xray.
     ///
     /// Конфиг из JSON-подписки, сохранённый прежней версией приложения, мог не пройти
-    /// `XrayConfigurationPolicy`: Lua-скрипт в нём отклоняется уже здесь, с понятной ошибкой
-    /// (расширение тоже проверяет конфигурацию перед запуском).
+    /// `XrayConfigurationPolicy`: Lua-скрипт или поле в нескольких написаниях отклоняются уже
+    /// здесь, с понятной ошибкой (расширение тоже проверяет конфигурацию перед запуском).
     static func build(for server: ServerConfiguration, panelStore: PanelConfigurationStore = PanelConfigurationStore()) throws -> String {
         if server.panel != nil {
             // Готовый конфиг из JSON-подписки (уже адаптирован при загрузке).
@@ -248,9 +248,10 @@ enum TunnelConfigurationBuilder {
                 throw PanelConfigurationError.missing
             }
             if let data = json.data(using: .utf8),
-               let root = try? JSONSerialization.jsonObject(with: data),
-               XrayConfigurationPolicy.containsLuaScript(root) {
-                throw XrayConfigurationPolicy.Failure.luaScript
+               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                // Только проверка: сохранённый конфиг не переписывается, расширение применит
+                // политику ещё раз перед запуском.
+                _ = try XrayConfigurationPolicy.sanitize(root)
             }
             return json
         }

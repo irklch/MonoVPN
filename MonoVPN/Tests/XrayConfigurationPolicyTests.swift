@@ -56,12 +56,152 @@ struct XrayConfigurationPolicyTests {
         }
     }
 
-    /// Пустое поле `script` Xray не использует: оно убирается, конфиг принимается.
-    @Test func acceptsEmptyScript() throws {
+    /// Пустое поле `script` и `null` Xray не использует: конфиг принимается без изменения поля.
+    /// Строка из пробелов или значение другого типа — уже не «пусто»: конфиг отклоняется.
+    @Test func emptyScriptValues() throws {
         let root = config(["routing": ["script": "", "rules": [] as [Any]]])
         #expect(!XrayConfigurationPolicy.containsLuaScript(root))
         let adapted = try decode(XrayPanelConfiguration.adapt(root).json)
-        #expect((adapted["routing"] as? [String: Any])?["script"] == nil)
+        #expect((adapted["routing"] as? [String: Any])?["script"] as? String == "")
+
+        #expect(!XrayConfigurationPolicy.containsLuaScript(config(["dns": ["script": NSNull()]])))
+        #expect(XrayConfigurationPolicy.containsLuaScript(config(["dns": ["script": " "]])))
+        #expect(XrayConfigurationPolicy.containsLuaScript(config(["dns": ["script": 1]])))
+        #expect(XrayConfigurationPolicy.containsLuaScript(config(["dns": ["script": ["file": "a.lua"]]])))
+    }
+
+    /// Go сопоставляет имена полей без учёта регистра ASCII и считает `ſ` (U+017F) равной `s`,
+    /// а `K` (U+212A) — `k`; проверки сравнивают так же. Турецкие `İ`/`ı` Go с `i` не путает.
+    @Test func lookalikeKeysCannotBypassChecks() throws {
+        for key in ["SCRIPT", "\u{017F}cript", "sCrIpT"] {
+            #expect(XrayConfigurationPolicy.containsLuaScript(config(["routing": [key: "route.lua"]])), "\(key)")
+        }
+        for key in ["scr\u{0130}pt", "scr\u{0131}pt", "script_", "s-cript"] {
+            #expect(!XrayConfigurationPolicy.containsLuaScript(config(["routing": [key: "route.lua"]])), "\(key)")
+        }
+        #expect(XrayConfigurationPolicy.goFoldedName("master\u{212A}eyLog") == "masterkeylog")
+
+        let root = config(stream: [
+            "tlsSettings": ["serverName": "sni.example.com", "MASTER\u{212A}EYLOG": "/tmp/keys.log"],
+            "finalmask": ["QUICPARAM\u{017F}": ["DEBUG": true]],
+        ])
+        let adapted = try XrayPanelConfiguration.adapt(root)
+        #expect(!adapted.json.contains("/tmp/keys.log"))
+        #expect(!adapted.json.contains("DEBUG"))
+        #expect(adapted.droppedGeoEntries.contains("masterKeyLog"))
+        #expect(adapted.droppedGeoEntries.contains("quicParams.debug"))
+    }
+
+    /// Поле верхнего уровня в другом написании приводится к каноническому: вход `socks`
+    /// провайдера под ключом `inboundſ` не переживает адаптацию рядом с нашим TUN.
+    @Test func rootFieldsAreCanonicalized() throws {
+        let socks: [[String: Any]] = [["tag": "socks", "port": 10808, "listen": "127.0.0.1", "protocol": "socks"]]
+        let adapted = try decode(XrayPanelConfiguration.adapt(config(["Inbound\u{017F}": socks])).json)
+        #expect(adapted["Inbound\u{017F}"] == nil)
+        let inbounds = try #require(adapted["inbounds"] as? [[String: Any]])
+        #expect(inbounds.map { $0["protocol"] as? String } == ["tun"])
+
+        var upperCase = config()
+        upperCase.removeValue(forKey: "routing")
+        upperCase["ROUTING"] = ["domainStrategy": "AsIs"]
+        let renamed = try XrayConfigurationPolicy.sanitize(upperCase)
+        #expect(renamed.root["ROUTING"] == nil)
+        #expect((renamed.root["routing"] as? [String: Any])?["domainStrategy"] as? String == "AsIs")
+    }
+
+    /// Одно поле в нескольких написаниях: порядок применения в Xray неизвестен — отказ.
+    /// Исключения: `log` (заменяется целиком) и `env` без противоречащих значений (Go объединяет).
+    @Test func duplicateRootFields() throws {
+        #expect(throws: XrayConfigurationPolicy.Failure.ambiguousKeys) {
+            try XrayConfigurationPolicy.sanitize(config(["Routing": ["domainStrategy": "IPOnDemand"]]))
+        }
+        #expect(throws: XrayConfigurationPolicy.Failure.ambiguousKeys) {
+            try XrayConfigurationPolicy.sanitize(config(["env": ["xray.buf.readv": "enable"], "ENV": ["xray.buf.readv": "disable"]]))
+        }
+        let merged = try XrayConfigurationPolicy.sanitize(config([
+            "env": ["xray.buf.readv": "enable"], "Env": ["xray.vmess.padding": "true"], "LOG": ["loglevel": "debug"],
+        ]))
+        #expect(merged.root["Env"] == nil)
+        #expect(merged.root["LOG"] == nil)
+        let env = try #require(merged.root["env"] as? [String: String])
+        #expect(env == ["xray.buf.readv": "enable", "xray.vmess.padding": "true"])
+
+        let payload = try JSONSerialization.data(withJSONObject: [
+            config(["remarks": "Clean"]),
+            config(["remarks": "Ambiguous", "DNS": ["servers": ["1.1.1.1"]], "dns": ["servers": ["8.8.8.8"]]]),
+        ])
+        let result = try XrayJSONSubscriptionParser.parse(payload)
+        #expect(result.servers.map(\.name) == ["Clean"])
+        #expect(result.issues.first?.reason == XrayConfigurationPolicy.Failure.ambiguousKeys.localizedDescription)
+    }
+
+    /// `debug` убирается только у параметров QUIC и только со значением `true`: в том числе
+    /// внутри массива (`quicConfig` резолверов XDNS), но не во вложенных объектах и не вне QUIC.
+    @Test func quicDebugKeepsContext() throws {
+        let root = config(
+            ["dns": ["servers": ["1.1.1.1"], "debug": true]],
+            stream: ["finalmask": [
+                "quicParams": ["debug": true, "congestion": "brutal", "nested": ["debug": true]],
+                "udp": [["type": "xdns", "settings": ["resolvers": [["quicConfig": ["debug": true, "maxIdleTimeout": 30]]]]]],
+            ]]
+        )
+        let sanitized = try XrayConfigurationPolicy.sanitize(root)
+        let outbound = try #require((sanitized.root["outbounds"] as? [[String: Any]])?.first)
+        let stream = try #require(outbound["streamSettings"] as? [String: Any])
+        let finalmask = try #require(stream["finalmask"] as? [String: Any])
+        let quic = try #require(finalmask["quicParams"] as? [String: Any])
+        #expect(quic["debug"] == nil)
+        #expect(quic["congestion"] as? String == "brutal")
+        #expect((quic["nested"] as? [String: Any])?["debug"] as? Bool == true)
+        let udp = try #require(finalmask["udp"] as? [[String: Any]])
+        let resolvers = try #require((udp.first?["settings"] as? [String: Any])?["resolvers"] as? [[String: Any]])
+        let quicConfig = try #require(resolvers.first?["quicConfig"] as? [String: Any])
+        #expect(quicConfig["debug"] == nil)
+        #expect(quicConfig["maxIdleTimeout"] as? Int == 30)
+        #expect((sanitized.root["dns"] as? [String: Any])?["debug"] as? Bool == true)
+        #expect(sanitized.droppedParameters == ["quicParams.debug"])
+
+        let off = try XrayConfigurationPolicy.sanitize(config(stream: ["finalmask": ["quicParams": ["debug": false]]]))
+        #expect(off.droppedParameters.isEmpty)
+        let offOutbound = try #require((off.root["outbounds"] as? [[String: Any]])?.first)
+        let offStream = try #require(offOutbound["streamSettings"] as? [String: Any])
+        let offQUIC = (offStream["finalmask"] as? [String: Any])?["quicParams"] as? [String: Any]
+        #expect(offQUIC?["debug"] as? Bool == false)
+    }
+
+    /// Выключенный журнал ключей TLS (пусто или `none`) не меняется; любое другое значение убирается.
+    @Test func masterKeyLogValues() throws {
+        for value in ["", "none"] {
+            let sanitized = try XrayConfigurationPolicy.sanitize(config(stream: ["tlsSettings": ["serverName": "sni.example.com", "masterKeyLog": value]]))
+            #expect(sanitized.droppedParameters.isEmpty, "\(value)")
+        }
+        for value in ["None", "keys.log", "/tmp/keys.log"] {
+            let sanitized = try XrayConfigurationPolicy.sanitize(config(stream: ["realitySettings": ["masterKeyLog": value]]))
+            #expect(sanitized.droppedParameters == ["masterKeyLog"], "\(value)")
+        }
+    }
+
+    /// В `env` остаются только имена, которые Xray читает для разрешённых флагов (`xray.buf.readv`
+    /// и `XRAY_BUF_READV`). Другое написание, пробелы и `xray.tun.fd` от провайдера убираются.
+    @Test func environmentNameVariants() throws {
+        let sanitized = try XrayConfigurationPolicy.sanitize(config(["env": [
+            "xray.buf.readv": "enable",
+            "XRAY_BUF_SPLICE": "enable",
+            "Xray.Buf.Readv": "disable",
+            " xray.vmess.padding": "true",
+            "xray_buf_readv": "disable",
+            "xray.tun.fd": "5",
+            "XRAY_TUN_FD": "5",
+        ]]))
+        let env = try #require(sanitized.root["env"] as? [String: String])
+        #expect(env == ["xray.buf.readv": "enable", "XRAY_BUF_SPLICE": "enable"])
+        #expect(sanitized.droppedParameters.contains("env.XRAY_TUN_FD"))
+        #expect(sanitized.droppedParameters.contains("env.xray.tun.fd"))
+
+        let prepared = try decode(XrayRuntimeConfiguration.prepare(
+            json(config(["env": ["XRAY_TUN_FD": "5"]])), tunFileDescriptor: 9, resolvedAddresses: [:]
+        ))
+        #expect((prepared["env"] as? [String: String]) == ["xray.tun.fd": "9"])
     }
 
     /// Конфиг со скриптом не попадает в список серверов: причина видна в диагностике импорта.
@@ -171,6 +311,33 @@ struct LegacyDiagnosticsCleanupTests {
         #expect(!manager.fileExists(atPath: directory.appendingPathComponent("diagnostics.json").path))
         #expect(manager.fileExists(atPath: directory.appendingPathComponent("other").path))
         try manager.removeItem(at: directory)
+    }
+
+    /// Каталог с именем файла диагностики (не наш файл) не удаляется; отсутствующий каталог —
+    /// не ошибка.
+    @Test func keepsUnexpectedItems() throws {
+        let manager = FileManager.default
+        let directory = manager.temporaryDirectory.appendingPathComponent("Tunnel-\(UUID().uuidString)", isDirectory: true)
+        #expect(LegacyDiagnosticsCleanup.removeFiles(in: directory))
+        let lookalike = directory.appendingPathComponent("diagnostics.json", isDirectory: true)
+        try manager.createDirectory(at: lookalike, withIntermediateDirectories: true)
+        #expect(LegacyDiagnosticsCleanup.removeFiles(in: directory))
+        #expect(manager.fileExists(atPath: lookalike.path))
+        try manager.removeItem(at: directory)
+    }
+
+    /// Без контейнера App Group или его настроек очистка не считается выполненной
+    /// и повторится при следующем запуске.
+    @Test func unavailableContainerIsRetried() throws {
+        let suite = "LegacyDiagnosticsCleanupTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LegacyDiagnosticsCleanup.runIfNeeded(defaults: defaults, groupDefaults: defaults, tunnelDirectory: nil)
+        #expect(!defaults.bool(forKey: LegacyDiagnosticsCleanup.completedKey))
+
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Tunnel-\(UUID().uuidString)")
+        LegacyDiagnosticsCleanup.runIfNeeded(defaults: defaults, groupDefaults: nil, tunnelDirectory: directory)
+        #expect(!defaults.bool(forKey: LegacyDiagnosticsCleanup.completedKey))
     }
 
     /// Поля `refreshReports` и `subscription.snapshot` убираются, остальное состояние сохраняется.
