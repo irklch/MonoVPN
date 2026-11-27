@@ -106,8 +106,41 @@ struct ConnectionWidgetView: View {
 
     /// Кнопка, статус и, для состояний `needsSetup`/`unavailable`, URL открытия приложения.
     var body: some View {
+        tapArea
+            .containerBackground(for: .widget) {
+                Self.background
+            }
+            // Системную конфигурацию VPN можно создать только в приложении (оно показывает
+            // запрос разрешения). Маленький виджет поддерживает один URL на весь виджет,
+            // поэтому в этом состоянии нажатие открывает приложение с явной командой «connect».
+            // То же для `unavailable`: процесс виджета не смог прочитать конфигурацию VPN,
+            // поэтому управление безопасно передаётся основному приложению.
+            .widgetURL(state.opensApp ? TunnelCommand.connect.url : nil)
+    }
+
+    /// Весь виджет — одна кнопка: нажатие в любом месте (а не только по кругу) подключает
+    /// последний выбранный сервер или отключает VPN, не открывая приложение. Без команды
+    /// (нет сервера, нужна настройка, идёт отключение) нажатие открывает приложение.
+    @ViewBuilder
+    private var tapArea: some View {
+        switch state.command {
+        case .connect?:
+            Button(intent: ToggleVPNIntent(connect: true)) { content }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("widget.button.connect"))
+        case .disconnect?:
+            Button(intent: ToggleVPNIntent(connect: false)) { content }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("widget.button.disconnect"))
+        case nil:
+            content
+        }
+    }
+
+    /// Круг с иконкой и статус под ним; растянуты на весь виджет, чтобы нажималась вся площадь.
+    private var content: some View {
         VStack(spacing: 12) {
-            control
+            powerButton
             Text(statusKey)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(state == .connected ? .white : .white.opacity(0.55))
@@ -116,32 +149,7 @@ struct ConnectionWidgetView: View {
                 .invalidatableContent()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .containerBackground(for: .widget) {
-            Self.background
-        }
-        // Системную конфигурацию VPN можно создать только в приложении (оно показывает
-        // запрос разрешения). Маленький виджет поддерживает один URL на весь виджет,
-        // поэтому в этом состоянии нажатие открывает приложение с явной командой «connect».
-        // То же для `unavailable`: процесс виджета не смог прочитать конфигурацию VPN,
-        // поэтому управление безопасно передаётся основному приложению.
-        .widgetURL(state.opensApp ? TunnelCommand.connect.url : nil)
-    }
-
-    /// Кнопка с интентом в интерактивных состояниях; в остальных — просто картинка кнопки.
-    @ViewBuilder
-    private var control: some View {
-        switch state {
-        case .disconnected, .failed:
-            Button(intent: ToggleVPNIntent(connect: true)) { powerButton }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("widget.button.connect"))
-        case .connected, .connecting:
-            Button(intent: ToggleVPNIntent(connect: false)) { powerButton }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("widget.button.disconnect"))
-        case .needsSetup, .unavailable, .noServer, .disconnecting:
-            powerButton
-        }
+        .contentShape(Rectangle())
     }
 
     /// Круглая кнопка питания: белая при подключении, приглушённая без сервера и во время перехода.
