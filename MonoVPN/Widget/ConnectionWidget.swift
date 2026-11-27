@@ -62,38 +62,6 @@ struct ConnectionProvider: TimelineProvider {
     }
 }
 
-/// Подключает или отключает VPN из виджета — в процессе расширения виджета,
-/// не открывая приложение. Направление фиксируется при отрисовке виджета,
-/// а `TunnelCommand.action` перепроверяет реальный статус, поэтому двойное нажатие
-/// не может переключить VPN обратно.
-struct ToggleVPNIntent: AppIntent {
-    /// Название интента (системе нужно, пользователю не показывается).
-    static let title: LocalizedStringResource = "widget.intent.title"
-    /// Скрывает интент из Команд и Spotlight — он нужен только виджету.
-    static let isDiscoverable = false
-
-    /// `true` — подключить, `false` — отключить.
-    @Parameter(title: "widget.intent.connect")
-    var connect: Bool
-
-    /// Пустой инициализатор, которого требует `AppIntent`; по умолчанию — подключение.
-    init() {
-        connect = true
-    }
-
-    /// Создаёт интент с заданным направлением.
-    init(connect: Bool) {
-        self.connect = connect
-    }
-
-    /// Выполняет команду и просит виджет перерисоваться с новым статусом.
-    func perform() async throws -> some IntentResult {
-        await WidgetCommandRunner.perform(connect ? .connect : .disconnect)
-        WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
-        return .result()
-    }
-}
-
 /// Внешний вид виджета: кнопка питания и строка статуса на тёмном фоне.
 struct ConnectionWidgetView: View {
     /// Отображаемое состояние VPN.

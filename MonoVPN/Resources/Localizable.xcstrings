@@ -1243,6 +1243,28 @@
           }
         }
       }
+    },
+    "widget.intent.connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключить"
+          }
+        }
+      }
+    },
+    "widget.intent.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключить или отключить Mono VPN"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

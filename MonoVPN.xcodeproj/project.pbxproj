@@ -104,6 +104,11 @@
 			path = PacketTunnel;
 			sourceTree = "<group>";
 		};
+		7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Intents;
+			sourceTree = "<group>";
+		};
 		A5A41521C68A91FEFD5C8725 /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
@@ -223,6 +228,7 @@
 				165BF74A252DB2D530A37C06 /* DesignSystem */,
 				254B3BA83E35890E0B900508 /* Resources */,
 				A5A41521C68A91FEFD5C8725 /* Shared */,
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
 				6491EB9999E9AA3AECF04D93 /* PacketTunnel */,
 				EFD01462322AC7C758AED2A2 /* Widget */,
 				C47F599922025FA162E469A0 /* Tests */,
@@ -296,6 +302,7 @@
 			fileSystemSynchronizedGroups = (
 				A5A41521C68A91FEFD5C8725 /* Shared */,
 				EFD01462322AC7C758AED2A2 /* Widget */,
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
 			);
 			name = MonoVPNWidget;
 			packageProductDependencies = (
@@ -327,6 +334,7 @@
 				A5A41521C68A91FEFD5C8725 /* Shared */,
 				DA4BD2639D547A95407459A9 /* Models */,
 				E5C8605DDEB65D53830E2B06 /* Features */,
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
 			);
 			name = MonoVPN;
 			packageProductDependencies = (
