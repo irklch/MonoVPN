@@ -62,6 +62,7 @@ VPN-провайдера, выбирает сервер и нажимает кн
 MonoVPN.xcodeproj
 Frameworks/                  LibXray.xcframework (собирается скриптом, в git не хранится)
 THIRD_PARTY_NOTICES.md       лицензии сторонних компонентов (генерируется)
+third_party/sources/         точные исходники Xray-core, REALITY, gopher-luar (MPL-2.0) и libXray
 docs/                        лицензии, конфиденциальность, Export Compliance
 MonoVPN/
 ├── App/                     MonoVPNApp — точка входа, команды виджета, очистка данных прежних версий
@@ -85,7 +86,7 @@ MonoVPN/
 ├── PacketTunnel/            XrayPacketTunnelProvider, XrayCore (C API libXray), PrivacyInfo.xcprivacy
 ├── Widget/                  виджет, строки, PrivacyInfo.xcprivacy
 ├── Config/                  Identifiers.xcconfig, Info.plist, entitlements
-├── Scripts/                 сборка libXray, генерация уведомлений, проверка Privacy Manifest
+├── Scripts/                 сборка libXray, копия исходников, генерация уведомлений, проверка Privacy Manifest
 └── Tests/                   unit-тесты (Swift Testing)
 ```
 
@@ -119,12 +120,6 @@ MonoVPN/
   заранее разрешает имена серверов, настраивает `NEPacketTunnelNetworkSettings`, передаёт
   дескриптор utun во встроенный TUN Xray и запускает ядро. Конфигурация берётся из Keychain,
   поэтому туннель может запустить и система, и «Настройки → VPN», и виджет.
-
-> В репозитории остались исходники интеграции sing-box (`PacketTunnel/PacketTunnelProvider.swift`,
-> `PacketTunnel/TunnelPlatformInterface.swift`, `Core/VPN/VPNConfigurationBuilder.swift`,
-> `Scripts/build-libbox.sh`). В сборку они не входят: файлы extension обёрнуты в
-> `#if !MONO_CORE_XRAY`, флаг `MONO_CORE_XRAY` задан в `Identifiers.xcconfig`, а
-> `Libbox.xcframework` в проекте не подключён.
 
 ## Сборка
 
@@ -370,11 +365,18 @@ MonoVPN/Scripts/check-privacy-manifests.sh <archive>.xcarchive Frameworks/LibXra
 - **Где показаны.** Полные тексты, уведомления об авторских правах и ссылки на исходный код
   использованных версий — на экране «Подписка → Лицензии» и в
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- **Обновление.** После смены версий libXray / Xray-core выполните:
-
-  ```bash
-  MonoVPN/Scripts/generate-third-party-notices.sh
-  ```
+- **Копия исходников.** Точные архивы компонентов под MPL-2.0 и libXray хранятся в
+  [third_party/sources](third_party/sources/README.md), с SHA-256 и проверкой по `go.sum`.
+- **Обновление.** После смены версий libXray / Xray-core:
+  1. Обновите копию исходников:
+     ```bash
+     MonoVPN/Scripts/mirror-third-party-sources.sh
+     ```
+  2. Закоммитьте `third_party/sources`.
+  3. Перегенерируйте уведомления:
+     ```bash
+     MonoVPN/Scripts/generate-third-party-notices.sh
+     ```
 
 Разбор обязательств при распространении через App Store — в [docs/licensing.md](docs/licensing.md).
 

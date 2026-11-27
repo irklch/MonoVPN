@@ -16,6 +16,7 @@
 import json
 import os
 import re
+import subprocess
 import sys
 
 NOTICE_PATTERN = re.compile(r"^(LICEN[CS]E|COPYING|NOTICE|PATENTS|AUTHORS)([.-].*)?$", re.IGNORECASE)
@@ -106,6 +107,40 @@ def file_headers(directory, names):
     return result
 
 
+# Копия исходников в репозитории Mono VPN (third_party/sources, mirror-third-party-sources.sh).
+MIRROR_REPOSITORY = "https://github.com/irklch/MonoVPN"
+
+
+def mirror_links(repo_root, libxray_version):
+    """Ссылки на архивы в third_party/sources по SHA последнего коммита, который их менял:
+    такой адрес не меняется при дальнейших коммитах. Пусто, если архивов нет или они не закоммичены."""
+    directory = os.path.join(repo_root, "third_party", "sources")
+    if not os.path.isdir(directory):
+        return {}
+    commit = subprocess.run(["git", "-C", repo_root, "log", "-1", "--format=%H", "--", "third_party/sources"],
+                            capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(["git", "-C", repo_root, "status", "--porcelain", "--", "third_party/sources"],
+                           capture_output=True, text=True).stdout.strip()
+    if not commit or dirty:
+        raise SystemExit("error: commit third_party/sources before generating notices (links use its commit)")
+    links = {}
+    for name in sorted(os.listdir(directory)):
+        url = f"{MIRROR_REPOSITORY}/raw/{commit}/third_party/sources/{name}"
+        if name.endswith(".zip") and "@" in name:
+            module, version = name[:-len(".zip")].split("@", 1)
+            links[(module.replace("_", "/"), version)] = url
+        elif name == f"libXray-{libxray_version}.tar.gz":
+            links[("github.com/xtls/libxray", libxray_version)] = url
+    return links
+
+
+LGPL_NOTICE = (
+    "Mono VPN использует эту библиотеку (статически, в составе libXray). Библиотека и её использование "
+    "регулируются GNU Lesser General Public License v3 со специальным исключением для статической "
+    "и динамической линковки (текст ниже); к ней приложены тексты GNU LGPL v3 и GNU GPL v3."
+)
+
+
 def main():
     go_list, goroot, libxray_version, go_version, repo_root = sys.argv[1:6]
     packages = [p for p in read_json_stream(go_list) if not p.get("Standard")]
@@ -127,6 +162,7 @@ def main():
         compiled = package.get("GoFiles", []) + package.get("CgoFiles", [])
         entry["files"].setdefault(package["Dir"], set()).update(compiled)
 
+    mirrors = mirror_links(repo_root, libxray_version)
     components = []
     for path, module in modules.items():
         root = module["dir"]
@@ -182,12 +218,15 @@ def main():
         else:
             source = repository
             archive = f"https://proxy.golang.org/{escape_module(path)}/@v/{escape_module(version)}.zip"
+        if any(k.startswith("LGPL") for k in kinds):
+            notes.insert(0, LGPL_NOTICE)
         components.append({
             "name": path,
             "version": version,
             "license": ", ".join(kinds),
             "source": source,
             "sourceArchive": archive,
+            "mirror": mirrors.get((path, version)),
             "notes": notes,
             "texts": texts,
         })
@@ -201,6 +240,7 @@ def main():
         "license": classify(go_texts[0]["text"]),
         "source": "https://go.googlesource.com/go",
         "sourceArchive": f"https://go.dev/dl/{go_version}.src.tar.gz",
+        "mirror": None,
         "notes": [],
         "texts": go_texts,
     })
@@ -230,6 +270,8 @@ def main():
         "",
         "Source code of every component, in the exact version used, is available at the links below",
         "(`Source archive` is the module archive from the Go module proxy or the release tag archive).",
+        "For components under MPL-2.0 and for libXray, a copy of the exact source archive is also kept in",
+        "this repository: [third_party/sources](third_party/sources/README.md) (`Mirror`).",
         "Mono VPN does not modify any of these components.",
         "",
         "| Component | Version | License |",
@@ -239,7 +281,8 @@ def main():
         lines.append(f"| {c['name']} | {c.get('displayVersion', c['version'])} | {c['license']} |")
     for c in components:
         lines += ["", "---", "", f"## {c['name']} {c.get('displayVersion', c['version'])}", "",
-                  f"License: {c['license']}  ", f"Source: {c['source']}  ", f"Source archive: {c['sourceArchive']}"]
+                  f"License: {c['license']}  ", f"Source: {c['source']}  ", f"Source archive: {c['sourceArchive']}"
+                  + (f"  \nMirror: {c['mirror']}" if c.get("mirror") else "")]
         if c["notes"]:
             lines += ["", "Files under a different license (SPDX headers; the full license texts are listed in this document):", ""]
             lines += [f"- {note}" for note in c["notes"]]

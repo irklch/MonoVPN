@@ -683,6 +683,17 @@
         }
       }
     },
+    "licenses.mirror": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копия исходного кода в репозитории Mono VPN"
+          }
+        }
+      }
+    },
     "licenses.showText": {
       "extractionState": "manual",
       "localizations": {

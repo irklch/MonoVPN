@@ -7,6 +7,8 @@ that are actually compiled for iOS. The same texts are available in the app: Sub
 
 Source code of every component, in the exact version used, is available at the links below
 (`Source archive` is the module archive from the Go module proxy or the release tag archive).
+For components under MPL-2.0 and for libXray, a copy of the exact source archive is also kept in
+this repository: [third_party/sources](third_party/sources/README.md) (`Mirror`).
 Mono VPN does not modify any of these components.
 
 | Component | Version | License |
@@ -67,7 +69,8 @@ Mono VPN does not modify any of these components.
 
 License: MPL-2.0, MIT (transport/internet/masque/connectip)  
 Source: https://github.com/XTLS/Xray-core/tree/v26.11.9  
-Source archive: https://proxy.golang.org/github.com/xtls/xray-core/@v/v1.260327.1-0.20261109052709-676eaf66f8f0.zip
+Source archive: https://proxy.golang.org/github.com/xtls/xray-core/@v/v1.260327.1-0.20261109052709-676eaf66f8f0.zip  
+Mirror: https://github.com/irklch/MonoVPN/raw/db05bd873997fd7c6b6140a8498c8b81b5befe75/third_party/sources/github.com_xtls_xray-core@v1.260327.1-0.20261109052709-676eaf66f8f0.zip
 
 Files under a different license (SPDX headers; the full license texts are listed in this document):
 
@@ -469,7 +472,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 License: MIT  
 Source: https://github.com/XTLS/libXray/tree/v26.11.9  
-Source archive: https://github.com/XTLS/libXray/archive/refs/tags/v26.11.9.tar.gz
+Source archive: https://github.com/XTLS/libXray/archive/refs/tags/v26.11.9.tar.gz  
+Mirror: https://github.com/irklch/MonoVPN/raw/db05bd873997fd7c6b6140a8498c8b81b5befe75/third_party/sources/libXray-v26.11.9.tar.gz
 
 ### LICENSE
 
@@ -751,6 +755,10 @@ Copyright 2013 John Howard Palevich
 License: LGPL-3.0 with static linking exception  
 Source: https://github.com/juju/ratelimit  
 Source archive: https://proxy.golang.org/github.com/juju/ratelimit/@v/v1.0.2.zip
+
+Files under a different license (SPDX headers; the full license texts are listed in this document):
+
+- Mono VPN использует эту библиотеку (статически, в составе libXray). Библиотека и её использование регулируются GNU Lesser General Public License v3 со специальным исключением для статической и динамической линковки (текст ниже); к ней приложены тексты GNU LGPL v3 и GNU GPL v3.
 
 ### LICENSE
 
@@ -3332,7 +3340,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 License: MPL-2.0, BSD-3-Clause  
 Source: https://github.com/xtls/reality  
-Source archive: https://proxy.golang.org/github.com/xtls/reality/@v/v0.0.0-20261108101329-4bb46b2afd8b.zip
+Source archive: https://proxy.golang.org/github.com/xtls/reality/@v/v0.0.0-20261108101329-4bb46b2afd8b.zip  
+Mirror: https://github.com/irklch/MonoVPN/raw/db05bd873997fd7c6b6140a8498c8b81b5befe75/third_party/sources/github.com_xtls_reality@v0.0.0-20261108101329-4bb46b2afd8b.zip
 
 ### LICENSE
 
@@ -5165,7 +5174,8 @@ limitations under the License.
 
 License: MPL-2.0  
 Source: https://github.com/layeh/gopher-luar  
-Source archive: https://proxy.golang.org/layeh.com/gopher-luar/@v/v1.0.11.zip
+Source archive: https://proxy.golang.org/layeh.com/gopher-luar/@v/v1.0.11.zip  
+Mirror: https://github.com/irklch/MonoVPN/raw/db05bd873997fd7c6b6140a8498c8b81b5befe75/third_party/sources/layeh.com_gopher-luar@v1.0.11.zip
 
 ### LICENSE
 

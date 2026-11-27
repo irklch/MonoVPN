@@ -62,6 +62,12 @@ struct LicensesView: View {
                 }
                 .font(.caption)
             }
+            if let mirror = component.mirror, let url = URL(string: mirror) {
+                Link(destination: url) {
+                    Text("licenses.mirror")
+                }
+                .font(.caption)
+            }
             ForEach(component.notes, id: \.self) { note in
                 Text(verbatim: note)
                     .font(.caption)

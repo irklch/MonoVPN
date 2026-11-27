@@ -32,6 +32,8 @@ struct ThirdPartyNotices: Decodable, Equatable, Sendable {
         var source: String
         /// Архив исходного кода именно этой версии.
         var sourceArchive: String
+        /// Копия архива исходного кода в репозитории Mono VPN (MPL-2.0 и libXray); `nil` — копии нет.
+        var mirror: String?
         /// Файлы под другой лицензией или с другим правообладателем.
         var notes: [String]
         /// Тексты лицензий и уведомлений.
