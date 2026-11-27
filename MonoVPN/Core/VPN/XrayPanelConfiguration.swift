@@ -17,7 +17,9 @@ import Foundation
 ///   Xray не запустится. `geoip:private` заменяется списком частных сетей. Правило или
 ///   DNS-сервер, у которого после этого не осталось условий, удаляется целиком (иначе оно
 ///   совпало бы со всем трафиком);
-/// - журнал — наш (`warning`, без журнала доступа); путь к файлу задаёт расширение.
+/// - применяется `XrayConfigurationPolicy`: журнал Xray выключен полностью, `masterKeyLog`,
+///   отладка QUIC и посторонние переменные `env` убираются, а конфиг с Lua-скриптом
+///   (`routing.script`, `dns.script`, `script` маски finalmask) отклоняется.
 enum XrayPanelConfiguration {
     /// Протоколы outbound, которые считаются серверами (а не служебными `freedom`, `dns`, ...).
     static let serverProtocols: Set<String> = [
@@ -28,7 +30,8 @@ enum XrayPanelConfiguration {
     struct Adapted: Equatable {
         /// Конфиг для расширения (JSON с заглушкой дескриптора TUN).
         var json: String
-        /// Убранные ссылки на геобазы, без повторов и по алфавиту (для диагностики).
+        /// Убранные ссылки на геобазы и параметры, убранные `XrayConfigurationPolicy`, без
+        /// значений, без повторов и по алфавиту (для диагностики импорта).
         var droppedGeoEntries: [String]
     }
 
@@ -58,7 +61,11 @@ enum XrayPanelConfiguration {
             throw Failure.noOutbounds
         }
         root.removeValue(forKey: "remarks")
-        var dropped = Set<String>()
+        // Скрипты, журналы, запись ключей TLS, отладка: до любых других изменений.
+        let policy = try XrayConfigurationPolicy.sanitize(root)
+        root = policy.root
+        outbounds = root["outbounds"] as? [[String: Any]] ?? outbounds
+        var dropped = Set(policy.droppedParameters)
 
         // Входы: только наш TUN; sniffing — как у входов панели (нужен для правил по доменам).
         let oldInbounds = root["inbounds"] as? [[String: Any]] ?? []
@@ -74,7 +81,7 @@ enum XrayPanelConfiguration {
         }
         root["inbounds"] = [tun]
 
-        root["log"] = ["loglevel": "warning", "access": "none", "dnsLog": false]
+        root["log"] = XrayConfigurationPolicy.disabledLog
         var env = root["env"] as? [String: Any] ?? [:]
         env[XrayTunnelLayout.tunFdEnvKey] = XrayTunnelLayout.tunFdPlaceholder
         root["env"] = env

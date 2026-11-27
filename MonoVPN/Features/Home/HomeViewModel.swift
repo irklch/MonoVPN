@@ -292,7 +292,6 @@ final class HomeViewModel {
     /// необходимости перезапускает VPN. Возвращает `false`, если работающий туннель
     /// не удалось остановить — тогда подписка остаётся прежней.
     private func apply(_ subscription: Subscription) async -> Bool {
-        let report = diagnose(subscription)
         var updated = appState
         updated.replaceSubscription(with: subscription)
         // Изменение применяется к состоянию на момент фиксации (после остановки туннеля),
@@ -300,7 +299,6 @@ final class HomeViewModel {
         let commit = {
             var state = self.appState
             state.replaceSubscription(with: subscription)
-            state.refreshReports = SubscriptionDiagnostics.appending(report, to: state.refreshReports)
             self.appState = state
         }
 
@@ -314,20 +312,7 @@ final class HomeViewModel {
         return await switchTunnel(commit)
     }
 
-    /// Сравнивает новый ответ с предыдущим ответом того же источника и пишет отчёт в журнал.
-    /// Отчёт сохраняется вместе с подпиской при фиксации.
-    private func diagnose(_ subscription: Subscription) -> SubscriptionRefreshReport {
-        let previous = appState.subscription?.source == subscription.source ? appState.subscription?.snapshot : nil
-        let current = subscription.snapshot ?? SubscriptionSnapshot(
-            createdAt: subscription.lastUpdated, responseHash: "", normalizedHash: "", byteCount: 0,
-            entries: [], duplicateCount: 0, nondeterministicCount: 0
-        )
-        let report = SubscriptionDiagnostics.report(previous: previous, current: current)
-        SubscriptionDiagnostics.log(report)
-        return report
-    }
-
-    /// Поддерживает актуальной копию конфигурации sing-box выбранного сервера в Keychain.
+    /// Поддерживает актуальной копию конфигурации туннеля (Xray) выбранного сервера в Keychain.
     /// Виджет запускает туннель именно с этой конфигурацией и никогда не выбирает
     /// сервер сам; без выбранного сервера элемент удаляется («Нет сервера»).
     private func syncTunnelConfiguration() {

@@ -89,9 +89,10 @@ struct XrayPanelConfigurationTests {
         #expect((inbounds[0]["sniffing"] as? [String: Any])?["destOverride"] as? [String] == ["http", "tls", "quic"])
 
         let log = try #require(root["log"] as? [String: Any])
-        #expect(log["loglevel"] as? String == "warning")
+        #expect(log["loglevel"] as? String == "none")
         #expect(log["access"] as? String == "none")
-        #expect(log["error"] == nil)
+        #expect(log["error"] as? String == "none")
+        #expect(log["dnsLog"] as? Bool == false)
         #expect((root["env"] as? [String: String])?["xray.tun.fd"] == "-1")
 
         let rules = try #require((root["routing"] as? [String: Any])?["rules"] as? [[String: Any]])

@@ -89,6 +89,17 @@
         }
       }
     },
+    "tunnel.error.luaScript": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфигурация сервера содержит Lua-скрипт. Mono VPN не выполняет скрипты из подписок, поэтому этот сервер недоступен."
+          }
+        }
+      }
+    },
     "tunnel.error.missingConfiguration": {
       "extractionState": "manual",
       "localizations": {

@@ -48,12 +48,8 @@ enum XrayConfigurationBuilder {
     /// Вместо дескриптора TUN стоит `XrayTunnelLayout.tunFdPlaceholder`: его заменяет расширение.
     static func build(for server: ServerConfiguration) throws -> String {
         let config: [String: Any] = [
-            "log": [
-                // Только предупреждения и без журнала доступа: посещённые адреса не пишутся.
-                "loglevel": "warning",
-                "access": "none",
-                "dnsLog": false,
-            ],
+            // Журнал Xray выключен полностью: ни журнала доступа, ни ошибок, ни DNS-запросов.
+            "log": XrayConfigurationPolicy.disabledLog,
             "env": [XrayTunnelLayout.tunFdEnvKey: XrayTunnelLayout.tunFdPlaceholder],
             "dns": [
                 "servers": remoteDNSServers,
@@ -241,11 +237,20 @@ enum XrayConfigurationBuilder {
 /// Выбирает генератор конфигурации туннеля для ядра текущей сборки.
 enum TunnelConfigurationBuilder {
     /// Конфигурация туннеля для сервера: JSON sing-box или Xray.
+    ///
+    /// Конфиг из JSON-подписки, сохранённый прежней версией приложения, мог не пройти
+    /// `XrayConfigurationPolicy`: Lua-скрипт в нём отклоняется уже здесь, с понятной ошибкой
+    /// (расширение тоже проверяет конфигурацию перед запуском).
     static func build(for server: ServerConfiguration, panelStore: PanelConfigurationStore = PanelConfigurationStore()) throws -> String {
         if server.panel != nil {
             // Готовый конфиг из JSON-подписки (уже адаптирован при загрузке).
             guard VPNCore.current == .xray, let json = panelStore.configuration(for: server.id) else {
                 throw PanelConfigurationError.missing
+            }
+            if let data = json.data(using: .utf8),
+               let root = try? JSONSerialization.jsonObject(with: data),
+               XrayConfigurationPolicy.containsLuaScript(root) {
+                throw XrayConfigurationPolicy.Failure.luaScript
             }
             return json
         }

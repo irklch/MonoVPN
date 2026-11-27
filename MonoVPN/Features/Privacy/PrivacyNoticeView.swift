@@ -14,14 +14,19 @@ struct PrivacyNoticeView: View {
                 EmptyView()
             }
 
-            VStack(alignment: .leading, spacing: 22) {
-                item("shield", "privacy.item.client")
-                item("arrow.triangle.branch", "privacy.item.traffic")
-                item("eye.slash", "privacy.item.noTracking")
-                item("key", "privacy.item.storage")
+            // Пункты прокручиваются, если не помещаются (маленький экран, крупный шрифт);
+            // кнопки при этом остаются внизу, как и раньше.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    item("shield", "privacy.item.client")
+                    item("arrow.triangle.branch", "privacy.item.traffic")
+                    item("eye.slash", "privacy.item.noTracking")
+                    item("key", "privacy.item.storage")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 24)
             }
-
-            Spacer(minLength: 24)
+            .scrollBounceBehavior(.basedOnSize)
 
             VStack(spacing: 12) {
                 Button("privacy.accept", action: onAccept)

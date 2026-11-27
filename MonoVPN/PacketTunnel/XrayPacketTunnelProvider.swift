@@ -1,6 +1,5 @@
 #if MONO_CORE_XRAY
 import Foundation
-import Network
 import NetworkExtension
 import os
 import WidgetKit
@@ -19,18 +18,18 @@ import WidgetKit
 ///    Xray работает с дубликатом дескриптора (`proxy/tun/tun_darwin.go`), tun2socks не нужен.
 /// 5. `runXray`. Собственные сокеты процесса Packet Tunnel iOS не направляет в туннель,
 ///    поэтому соединения Xray с сервером и `freedom` для LAN идут мимо него — без циклов.
+///
+/// Расширение не ведёт журналов и не пишет диагностику на устройство: журналы Xray выключены
+/// в самой конфигурации (`XrayConfigurationPolicy`), а технические сообщения `os.Logger`
+/// есть только в DEBUG-сборке и не содержат адресов, ссылок и учётных данных.
 final class PacketTunnelProvider: NEPacketTunnelProvider {
-    /// Логгер категории «PacketTunnel»; без адресов и секретов.
+    #if DEBUG
+    /// Логгер категории «PacketTunnel» (только DEBUG); без адресов и секретов.
     private static let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "PacketTunnel")
+    #endif
 
     /// Keychain с конфигурацией туннеля и последней ошибкой запуска.
     private let storage = SecureStorage()
-    /// Диагностика в контейнере App Group.
-    private let diagnostics = TunnelDiagnosticsStore()
-    /// Измерение памяти, пока туннель работает.
-    private let memoryMonitor = TunnelMemoryMonitor()
-    /// Наблюдение за сменой сети (только запись событий в диагностику).
-    private var pathMonitor: NWPathMonitor?
     /// Работает ли ядро, запущенное этим провайдером.
     private var isCoreRunning = false
     /// Счётчики трафика для главного экрана приложения.
@@ -41,60 +40,33 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     /// Поднимает туннель и запускает Xray; при ошибке сохраняет очищенный текст для приложения
     /// и виджета, освобождает ресурсы и пробрасывает ошибку системе.
     override func startTunnel(options _: [String: NSObject]?) async throws {
-        let startedAt = Date()
         try? storage.remove(.lastTunnelError)
-        diagnostics.update { state in
-            if state.endedWithoutStop {
-                // stopTunnel не вызывался: расширение было завершено (например, по лимиту памяти).
-                state.record("Предыдущая сессия завершилась без остановки туннеля (пик памяти \(state.peakFootprintMB.map { "\($0) МБ" } ?? "—"))")
-            }
-            state.startedAt = startedAt
-            state.lastStartError = nil
-            state.startDuration = nil
-            state.coreStartDuration = nil
-            state.peakFootprintMB = nil
-            state.record("Запуск туннеля")
-        }
-
         do {
             try await startTunnelAndCore()
-            let duration = Date().timeIntervalSince(startedAt)
-            diagnostics.update { state in
-                state.startDuration = (duration * 1000).rounded() / 1000
-                state.record("Туннель запущен за \(String(format: "%.2f", duration)) с")
-            }
-            memoryMonitor.start()
-            startPathMonitor()
-            Self.logger.info("Tunnel started")
+            #if DEBUG
+            Self.logger.debug("Tunnel started")
+            #endif
             reloadWidget()
         } catch {
+            // Очищенный текст ошибки нужен приложению и виджету, чтобы показать её пользователю.
             let message = TunnelErrorSanitizer.sanitize((error as NSError).localizedDescription)
             try? storage.set(message, for: .lastTunnelError)
-            diagnostics.update { state in
-                state.lastStartError = message
-                state.record("Ошибка запуска: \(message)")
-            }
-            Self.logger.error("Tunnel start failed: \(message, privacy: .public)")
+            #if DEBUG
+            Self.logger.error("Tunnel start failed: \(message, privacy: .private)")
+            #endif
             stopCore()
             reloadWidget()
             throw TunnelError.core(message)
         }
     }
 
-    /// Вызывается системой при остановке туннеля: останавливает ядро, записывает причину.
+    /// Вызывается системой при остановке туннеля: останавливает ядро и обновляет виджет.
     override func stopTunnel(with reason: NEProviderStopReason) async {
-        let name = Self.describe(reason)
-        Self.logger.info("Stopping tunnel, reason \(name, privacy: .public)")
-        pathMonitor?.cancel()
-        pathMonitor = nil
-        memoryMonitor.stop()
+        #if DEBUG
+        Self.logger.debug("Stopping tunnel, reason \(reason.rawValue, privacy: .public)")
+        #endif
         stopCore()
         traffic.setInterfaceName(nil)
-        diagnostics.update { state in
-            state.stoppedAt = .now
-            state.stopReason = name
-            state.record("Остановка: \(name)")
-        }
         reloadWidget()
     }
 
@@ -119,14 +91,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         // 2. Адреса серверов — до сетевых настроек туннеля. У конфига из JSON-подписки
         // с балансировщиком их десятки: разрешаются параллельно, с общим ограничением времени.
         let hosts = try XrayRuntimeConfiguration.serverHosts(in: template)
+        // Неразрешённые за отведённое время имена Xray разрешит сам при подключении.
         let resolved = Self.resolveAll(hosts, timeout: Self.resolveTimeout)
-        if resolved.count < hosts.count {
-            // Неразрешённые имена Xray разрешит сам при подключении.
-            let message = hosts.count == 1
-                ? "Имя сервера не разрешено заранее"
-                : "Имена серверов разрешены заранее: \(resolved.count) из \(hosts.count)"
-            diagnostics.update { $0.record(message) }
-        }
 
         // 3. Сетевые настройки туннеля.
         try await setTunnelNetworkSettings(Self.networkSettings())
@@ -136,28 +102,17 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             throw TunnelError.core("TUN file descriptor not found")
         }
         traffic.setInterfaceName(tun.interfaceName)
+        // Подготовка заново применяет `XrayConfigurationPolicy`: журналы выключены, а конфигурация
+        // с Lua-скриптом (например, сохранённая прежней версией приложения) не запускается.
         let configuration = try XrayRuntimeConfiguration.prepare(
             template,
             tunFileDescriptor: tun.fd,
-            resolvedAddresses: resolved,
-            errorLogPath: XrayErrorLog.reset(),
-            logLevel: XrayErrorLog.isVerbose ? "info" : nil
+            resolvedAddresses: resolved
         )
 
         // 5. Ядро.
-        let coreStart = Date()
         try XrayCore.run(configuration: configuration)
         isCoreRunning = true
-        let coreDuration = Date().timeIntervalSince(coreStart)
-        let version = XrayCore.version().map { "Xray \($0)" } ?? "Xray"
-        diagnostics.update { state in
-            state.core = version
-            state.coreStartDuration = (coreDuration * 1000).rounded() / 1000
-            if XrayErrorLog.isVerbose {
-                state.record("Подробный журнал Xray включён")
-            }
-            state.record("\(version) запущен за \(String(format: "%.3f", coreDuration)) с на \(tun.interfaceName)")
-        }
     }
 
     /// Останавливает Xray; безопасно вызывать повторно.
@@ -166,7 +121,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         do {
             try XrayCore.stop()
         } catch {
-            diagnostics.update { $0.record("Ошибка остановки ядра: \(error.localizedDescription)") }
+            #if DEBUG
+            Self.logger.error("Core stop failed")
+            #endif
         }
         isCoreRunning = false
     }
@@ -195,25 +152,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     // MARK: - Сеть
-
-    /// Записывает в диагностику смену сети (Wi-Fi ↔ сотовая). Xray сам переустанавливает
-    /// соединения; заранее разрешённый IP сервера от смены сети не зависит.
-    private func startPathMonitor() {
-        pathMonitor?.cancel()
-        let monitor = NWPathMonitor()
-        let last = PathDescription()
-        let store = diagnostics
-        monitor.pathUpdateHandler = { path in
-            let kind = [NWInterface.InterfaceType.wifi, .cellular, .wiredEthernet]
-                .first { path.usesInterfaceType($0) }
-                .map { "\($0)" } ?? "other"
-            let description = "\(path.status) \(kind)"
-            guard let previous = last.swap(description), previous != description else { return }
-            store.update { $0.record("Сеть: \(description)") }
-        }
-        monitor.start(queue: DispatchQueue(label: "com.irklch.monovpn.path", qos: .utility))
-        pathMonitor = monitor
-    }
 
     /// IP-адрес ли строка.
     static func isIPAddress(_ host: String) -> Bool {
@@ -275,47 +213,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             cursor = info.pointee.ai_next
         }
         return ipv4 ?? ipv6
-    }
-
-    /// Название причины остановки для диагностики.
-    static func describe(_ reason: NEProviderStopReason) -> String {
-        switch reason {
-        case .none: "none"
-        case .userInitiated: "userInitiated"
-        case .providerFailed: "providerFailed"
-        case .noNetworkAvailable: "noNetworkAvailable"
-        case .unrecoverableNetworkChange: "unrecoverableNetworkChange"
-        case .providerDisabled: "providerDisabled"
-        case .authenticationCanceled: "authenticationCanceled"
-        case .configurationFailed: "configurationFailed"
-        case .idleTimeout: "idleTimeout"
-        case .configurationDisabled: "configurationDisabled"
-        case .configurationRemoved: "configurationRemoved"
-        case .superceded: "superceded"
-        case .userLogout: "userLogout"
-        case .userSwitch: "userSwitch"
-        case .connectionFailed: "connectionFailed"
-        case .sleep: "sleep"
-        case .appUpdate: "appUpdate"
-        case .internalError: "internalError"
-        @unknown default: "unknown(\(reason.rawValue))"
-        }
-    }
-}
-
-/// Последнее описание сетевого пути; обработчик `NWPathMonitor` вызывается на его очереди.
-private final class PathDescription: @unchecked Sendable {
-    /// Защищает значение.
-    private let lock = NSLock()
-    /// Последнее описание.
-    private var value: String?
-
-    /// Записывает новое описание и возвращает прежнее; `nil` при первом вызове.
-    func swap(_ newValue: String) -> String? {
-        lock.withLock {
-            defer { value = newValue }
-            return value
-        }
     }
 }
 

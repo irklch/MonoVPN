@@ -19,9 +19,6 @@ struct Subscription: Codable, Hashable, Sendable {
     var issues: [ParseIssue]
     /// Дата последнего успешного импорта или обновления.
     var lastUpdated: Date
-    /// Снимок последнего ответа для диагностики обновлений: хеши и статусы, без значений параметров.
-    /// `nil` у подписок, сохранённых до появления диагностики.
-    var snapshot: SubscriptionSnapshot? = nil
     /// Ядро, для которого разобраны серверы; `nil` — сохранено до появления выбора ядра (sing-box).
     var core: VPNCore? = nil
     /// Формат ответа подписки; `nil` — сохранено до появления JSON-подписок (ссылки).
@@ -40,9 +37,11 @@ struct Subscription: Codable, Hashable, Sendable {
         case xrayJSON
     }
 
-    /// Сохраняемые поля: `panelConfigurations` в Keychain не попадает.
+    /// Сохраняемые поля: `panelConfigurations` в Keychain не попадает. Поле `snapshot`
+    /// прежних версий (диагностика обновлений) при чтении игнорируется и при следующем
+    /// сохранении исчезает.
     private enum CodingKeys: String, CodingKey {
-        case source, servers, issues, lastUpdated, snapshot, core, format
+        case source, servers, issues, lastUpdated, core, format
     }
 
     /// Можно ли обновить подписку: только для подписки по URL.
@@ -77,10 +76,10 @@ struct AppState: Codable, Equatable, Sendable {
     /// Текущая подписка; `nil`, пока пользователь её не добавил.
     var subscription: Subscription?
     /// ID выбранного пользователем сервера.
+    ///
+    /// Поле `refreshReports` прежних версий (отчёты диагностики обновлений) при чтении
+    /// игнорируется и при следующем сохранении исчезает.
     var selectedServerID: String?
-    /// Последние отчёты диагностики обновлений подписки (не больше `SubscriptionDiagnostics.maxReports`).
-    /// Опционально, чтобы состояние, сохранённое прежними версиями, по-прежнему декодировалось.
-    var refreshReports: [SubscriptionRefreshReport]?
 
     /// Заменяет подписку, сохраняя выбранный пользователем сервер, если он всё ещё есть
     /// и поддерживается; иначе выбранным становится первый поддерживаемый сервер.
