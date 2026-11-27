@@ -1,3 +1,4 @@
+#if !MONO_CORE_XRAY
 import Foundation
 import Libbox
 import Network
@@ -490,3 +491,4 @@ private final class ResultBox<T>: @unchecked Sendable {
     /// Результат задачи; `nil`, пока задача не завершилась.
     var value: Result<T, Error>?
 }
+#endif

@@ -141,6 +141,15 @@ libXray совместим только с последним релизом Xra
   `gopher-lua`). Динамической загрузки кода нет (Lua-скрипты не используются в нашей конфигурации),
   но API-сервисы (`api`, `stats`) в конфиг не включать.
 
+## Статус (ветка `feature/xray-core-migration`)
+
+- Шаг 0 выполнен: 56 VLESS-серверов (TCP 19, XHTTP 22, gRPC 15), поддерживались 20–24; причины —
+  `transport:xhttp` и `grpcAuthorityMismatch`; провайдер меняет SNI и SID между запросами.
+- Шаги 1–5 реализованы в виде PoC (скрипт `build-libxray.sh`, LibXray в `PacketTunnel` вместо Libbox,
+  генератор конфигурации Xray для TCP/gRPC/XHTTP, `XrayPacketTunnelProvider` со встроенным TUN Xray,
+  диагностика памяти и остановок). Проверка на устройстве — [xray-poc-testing.md](xray-poc-testing.md).
+- Шаги 6–7 — после успешной проверки PoC.
+
 ## 9. Пошаговый план миграции
 
 Каждый шаг заканчивается проверяемым результатом; sing-box остаётся рабочим ядром до шага 6.

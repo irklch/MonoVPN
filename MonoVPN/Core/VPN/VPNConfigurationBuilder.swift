@@ -2,6 +2,9 @@ import Foundation
 
 /// Строит JSON-конфигурацию sing-box (v1.14) для одного сервера.
 ///
+/// Используется сборкой с ядром sing-box; сборка с Xray использует `XrayConfigurationBuilder`
+/// (выбор — `TunnelConfigurationBuilder`).
+///
 /// Модель маршрутизации:
 /// - Вход TUN с адресами IPv4 **и** IPv6 и `auto_route`, поэтому Packet Tunnel
 ///   забирает оба маршрута по умолчанию. Трафик IPv6 никогда не идёт мимо
@@ -133,7 +136,7 @@ enum VPNConfigurationBuilder {
         if let tls = server.tls {
             outbound["tls"] = tlsObject(tls)
         }
-        if let transport = transportObject(server.transport) {
+        if let transport = try transportObject(server.transport) {
             outbound["transport"] = transport
         }
         return outbound
@@ -162,7 +165,8 @@ enum VPNConfigurationBuilder {
     }
 
     /// Преобразует транспорт в объект `transport` sing-box; для TCP возвращает `nil` (транспорт не нужен).
-    private static func transportObject(_ transport: TransportSettings) -> [String: Any]? {
+    /// Транспорты, которых нет в sing-box (XHTTP), — ограничение ядра.
+    private static func transportObject(_ transport: TransportSettings) throws -> [String: Any]? {
         switch transport {
         case .tcp:
             return nil
@@ -190,6 +194,8 @@ enum VPNConfigurationBuilder {
                 object["host"] = host
             }
             return object
+        case .xhttp:
+            throw ProxyLinkError.unsupportedTransport("xhttp")
         }
     }
 

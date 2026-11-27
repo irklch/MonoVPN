@@ -10,7 +10,7 @@
 		34665EE79F83FE752F27D50F /* PacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 657350E34AFB37D463DC7294 /* PacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		429555205FC931599A861E79 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E1DD12066C3BD5D521D0450 /* libresolv.tbd */; };
 		4FB07BD5F34137484971E17C /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */; };
-		9D079E5E00F87389F3C3B316 /* Libbox.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 508B8F50520DE46F8CC79D45 /* Libbox.xcframework */; };
+		6C1E0A3B9F2D4E7A8B5C1D20 /* LibXray.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */; };
 		A134703A93A4E12B2DD44E54 /* MonoVPNWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0FD7488223EA0E20BD335592 /* MonoVPNWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C3AAFA1E2FEDC8CD9E9C1AE7 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4584131C16A682F6A8A981AF /* UIKit.framework */; };
 		FFE7AB6E35BF5BE4D882D37A /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */; };
@@ -61,7 +61,7 @@
 		178FBC1F053978EA8A0E1699 /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
 		3E1DD12066C3BD5D521D0450 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
 		4584131C16A682F6A8A981AF /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		508B8F50520DE46F8CC79D45 /* Libbox.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Libbox.xcframework; sourceTree = "<group>"; };
+		6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
 		657350E34AFB37D463DC7294 /* PacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
 		7C86CDD51E8219313E31D720 /* MonoVPN.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MonoVPN.entitlements; sourceTree = "<group>"; };
@@ -137,7 +137,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FFE7AB6E35BF5BE4D882D37A /* NetworkExtension.framework in Frameworks */,
-				9D079E5E00F87389F3C3B316 /* Libbox.xcframework in Frameworks */,
+				6C1E0A3B9F2D4E7A8B5C1D20 /* LibXray.xcframework in Frameworks */,
 				429555205FC931599A861E79 /* libresolv.tbd in Frameworks */,
 				C3AAFA1E2FEDC8CD9E9C1AE7 /* UIKit.framework in Frameworks */,
 			);
@@ -191,7 +191,7 @@
 		82DAB9F55C0B6BAF4399D627 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				508B8F50520DE46F8CC79D45 /* Libbox.xcframework */,
+				6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */,
 				72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */,
 				3E1DD12066C3BD5D521D0450 /* libresolv.tbd */,
 				4584131C16A682F6A8A981AF /* UIKit.framework */,

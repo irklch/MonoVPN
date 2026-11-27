@@ -7,6 +7,8 @@
 - VPN Core: [sing-box](https://github.com/SagerNet/sing-box) **v1.14.4** (Libbox, собирается локально в `Libbox.xcframework`).
 - Сторонних Swift-зависимостей нет.
 
+> **Ветка `feature/xray-core-migration` — Proof of Concept на Xray-core v26.11.9** (флаг сборки `MONO_CORE_XRAY`, `LibXray.xcframework` из `MonoVPN/Scripts/build-libxray.sh`). Сборка и проверка на iPhone — [docs/xray-poc-testing.md](docs/xray-poc-testing.md), план — [docs/xray-migration.md](docs/xray-migration.md). Описание ниже относится к реализации на sing-box, которая остаётся в репозитории до успешной проверки PoC.
+
 > **Статус.** Код всех targets (приложение, Packet Tunnel, виджет) собирается для устройства (arm64, без подписи) и симулятора, unit-тесты проходят, конфигурации sing-box проходят `sing-box check`. **Реальное VPN-подключение и работа виджета не проверены:** для этого нужны платный Apple Developer аккаунт и физический iPhone (см. «Что проверить на iPhone»). До такой проверки VPN нельзя считать работающим.
 
 ---
@@ -46,7 +48,7 @@ MonoVPN/
 ├── Models/                  ServerConfiguration, Subscription, AppState
 ├── Features/
 │   ├── Home/                HomeView, HomeViewModel
-│   ├── Servers/             ServersView (sheet «Серверы»)
+│   ├── Servers/             ServerListView (список серверов на главном экране)
 │   ├── Subscription/        SubscriptionView (sheet «Подписка»)
 │   └── Privacy/             PrivacyNoticeView (перед первым подключением)
 ├── DesignSystem/            Палитра, стили кнопок, общие компоненты

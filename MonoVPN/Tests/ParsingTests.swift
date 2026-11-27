@@ -82,7 +82,9 @@ struct ProxyLinkParserTests {
     /// Корректная ссылка с возможностью, которой нет в ядре, даёт неподдерживаемый сервер,
     /// а не ошибку; транспорт не подменяется.
     @Test func unsupportedTransportKeepsServer() throws {
-        for type in ["xhttp", "splithttp", "quic", "kcp"] {
+        // QUIC и mKCP не поддерживает ни одно ядро; XHTTP — только Xray.
+        let unsupported = ["quic", "kcp"] + (VPNCore.current.supportsXHTTP ? [] : ["xhttp", "splithttp"])
+        for type in unsupported {
             let server = try ProxyLinkParser.parse("vless://\(Fixture.uuid)@example.com:443?security=tls&type=\(type)#X")
             #expect(server.name == "X")
             #expect(!server.isSupported)
@@ -130,7 +132,14 @@ struct ProxyLinkParserTests {
             #expect(server.ignoredParameters.isEmpty)
         }
         let other = try ProxyLinkParser.parse(base + "&authority=other.example.com")
-        #expect(other.incompatibility == .unsupportedGRPCAuthority("other.example.com"))
+        if VPNCore.current.supportsIndependentGRPCAuthority {
+            // Xray передаёт :authority независимо от SNI.
+            #expect(other.isSupported)
+            #expect(other.grpcAuthority == "other.example.com")
+            #expect(other.tls?.serverName == "front.example.com")
+        } else {
+            #expect(other.incompatibility == .unsupportedGRPCAuthority("other.example.com"))
+        }
 
         // Без SNI authority сравнивается с адресом сервера.
         let noSNI = try ProxyLinkParser.parse("trojan://p@grpc.example.com:443?type=grpc&serviceName=s&authority=grpc.example.com")
@@ -141,13 +150,22 @@ struct ProxyLinkParserTests {
         // VMess: authority из JSON.
         let vmessJSON = #"{"v":"2","ps":"G","add":"example.com","port":"443","id":"\#(Fixture.uuid)","net":"grpc","path":"s","tls":"tls","sni":"a.example.com","authority":"b.example.com"}"#
         let vmess = try ProxyLinkParser.parse("vmess://" + Data(vmessJSON.utf8).base64EncodedString())
-        #expect(vmess.incompatibility == .unsupportedGRPCAuthority("b.example.com"))
+        if VPNCore.current.supportsIndependentGRPCAuthority {
+            #expect(vmess.grpcAuthority == "b.example.com")
+        } else {
+            #expect(vmess.incompatibility == .unsupportedGRPCAuthority("b.example.com"))
+        }
     }
 
     /// Плагины Shadowsocks, встроенные в sing-box, применяются; остальные — ограничение ядра.
     @Test func shadowsocksPlugins() throws {
         let base = "ss://" + Data("aes-256-gcm:pass".utf8).base64EncodedString() + "@198.51.100.7:8388"
         let obfs = try ProxyLinkParser.parse(base + "?plugin=simple-obfs%3Bobfs%3Dhttp%3Bobfs-host%3Dexample.com#O")
+        guard VPNCore.current.supportsShadowsocksPlugins else {
+            // В Xray-core нет SIP003-плагинов.
+            #expect(obfs.incompatibility == .unsupportedShadowsocksPlugin("simple-obfs"))
+            return
+        }
         #expect(obfs.isSupported)
         #expect(obfs.shadowsocksPlugin == "obfs-local")
         #expect(obfs.shadowsocksPluginOptions == "obfs=http;obfs-host=example.com")
@@ -188,7 +206,7 @@ struct SubscriptionParserTests {
     /// Смешанная подписка: все распознанные серверы в списке, неподдерживаемые выбрать нельзя,
     /// битые записи — только в `issues`; диагностика не раскрывает секреты.
     @Test func mixedSubscription() throws {
-        let xhttp = "vless://\(Fixture.uuid)@example.com:443?security=reality&pbk=\(Fixture.realityKey)&sni=a.example.com&type=xhttp&path=%2Fx#XHTTP"
+        let xhttp = "vless://\(Fixture.uuid)@example.com:443?security=reality&pbk=\(Fixture.realityKey)&sni=a.example.com&type=quic&path=%2Fx#XHTTP"
         let headerHTTP = "vmess://" + Data(#"{"ps":"HTTP","add":"example.com","port":"80","id":"\#(Fixture.uuid)","net":"tcp","type":"http"}"#.utf8).base64EncodedString()
         let emptyHeader = "vless://\(Fixture.uuid)@example.com:443?security=tls&type=tcp&headerType=#Empty"
         let broken = "vless://not-a-uuid@example.com:443#Broken"
@@ -218,7 +236,7 @@ struct SubscriptionParserTests {
     @Test func largeSubscription() throws {
         let links = (0..<600).map { index in
             index.isMultiple(of: 3)
-                ? "vless://\(Fixture.uuid)@example.com:\(1000 + index)?security=tls&type=xhttp#S\(index)"
+                ? "vless://\(Fixture.uuid)@example.com:\(1000 + index)?security=tls&type=quic#S\(index)"
                 : "vless://\(Fixture.uuid)@example.com:\(1000 + index)?security=tls&type=tcp&headerType=#S\(index)"
         }
         let body = Data((links + links.prefix(50)).joined(separator: "\n").utf8).base64EncodedString()
@@ -230,7 +248,7 @@ struct SubscriptionParserTests {
 
     /// Подписка только из неподдерживаемых серверов импортируется, но сервер не выбирается.
     @Test func onlyUnsupportedServers() throws {
-        let result = try SubscriptionParser.parse("vless://\(Fixture.uuid)@example.com:443?type=xhttp#X")
+        let result = try SubscriptionParser.parse("vless://\(Fixture.uuid)@example.com:443?type=quic#X")
         #expect(result.servers.count == 1)
         var state = AppState()
         state.replaceSubscription(with: Subscription(source: .link("x"), servers: result.servers, issues: [], lastUpdated: .now))

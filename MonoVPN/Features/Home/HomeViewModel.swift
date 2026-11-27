@@ -76,8 +76,14 @@ final class HomeViewModel {
     // MARK: - Жизненный цикл
 
     /// Вызывается при запуске приложения: загружает конфигурацию и статус VPN.
+    ///
+    /// Если подписка разобрана для другого VPN-ядра (например, сохранена сборкой с sing-box),
+    /// она один раз обновляется: от ядра зависит, какие серверы поддерживаются.
     func start() async {
         await vpn.load()
+        if let subscription = appState.subscription, (subscription.core ?? .singBox) != VPNCore.current {
+            await refreshSubscription()
+        }
     }
 
     /// Вызывается при возврате на передний план: перечитывает статус VPN из системы.
@@ -131,7 +137,7 @@ final class HomeViewModel {
         defer { isPerformingAction = false }
         clearErrors()
         do {
-            let configuration = try VPNConfigurationBuilder.build(for: server)
+            let configuration = try TunnelConfigurationBuilder.build(for: server)
             try await vpn.connect(configuration: configuration)
         } catch {
             connectionError = error.localizedDescription
@@ -204,7 +210,7 @@ final class HomeViewModel {
         syncTunnelConfiguration()
         guard let server = selectedServer else { return true }
         do {
-            try await vpn.connect(configuration: VPNConfigurationBuilder.build(for: server))
+            try await vpn.connect(configuration: TunnelConfigurationBuilder.build(for: server))
         } catch {
             connectionError = error.localizedDescription
         }
@@ -324,7 +330,7 @@ final class HomeViewModel {
     private func syncTunnelConfiguration() {
         do {
             if let server = selectedServer {
-                try store.saveTunnelConfiguration(VPNConfigurationBuilder.build(for: server))
+                try store.saveTunnelConfiguration(TunnelConfigurationBuilder.build(for: server))
             } else {
                 try store.removeTunnelConfiguration()
             }

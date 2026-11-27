@@ -65,5 +65,8 @@ fastlane/test_output
 # VPN core built locally by MonoVPN/Scripts/build-libbox.sh (large binary, not committed)
 Frameworks/Libbox.xcframework/
 Frameworks/LIBBOX_VERSION
+# Xray-core (LibXray), собирается MonoVPN/Scripts/build-libxray.sh
+Frameworks/LibXray.xcframework/
+Frameworks/LIBXRAY_VERSION
 DerivedData/
 .DS_Store
