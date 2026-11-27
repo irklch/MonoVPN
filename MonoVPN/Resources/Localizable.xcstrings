@@ -364,6 +364,28 @@
         }
       }
     },
+    "diagnostics.verboseLog": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подробный журнал Xray"
+          }
+        }
+      }
+    },
+    "diagnostics.verboseLog.caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Действует со следующего подключения. В журнал попадут ошибки каждого соединения и адреса сайтов — выключите после проверки."
+          }
+        }
+      }
+    },
     "error.input.empty": {
       "extractionState": "manual",
       "localizations": {

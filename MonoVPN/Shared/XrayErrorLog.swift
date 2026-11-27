@@ -13,7 +13,20 @@ enum XrayErrorLog {
     /// Сколько байт с конца файла читается для показа.
     static let tailBytes = 64 * 1024
     /// Сколько строк показывать.
-    static let visibleLines = 40
+    static let visibleLines = 150
+
+    /// Ключ флага подробного журнала в общих настройках App Group.
+    private static let verboseKey = "xrayVerboseLog"
+
+    /// Подробный журнал (`loglevel: info`): Xray пишет ошибки каждого соединения через сервер.
+    ///
+    /// В таком журнале есть адреса посещённых сайтов, поэтому по умолчанию он выключен и
+    /// включается вручную в диагностике. Действует со следующего подключения: флаг читает
+    /// расширение при запуске туннеля.
+    static var isVerbose: Bool {
+        get { UserDefaults(suiteName: AppIdentifiers.appGroup)?.bool(forKey: verboseKey) ?? false }
+        set { UserDefaults(suiteName: AppIdentifiers.appGroup)?.set(newValue, forKey: verboseKey) }
+    }
 
     /// Путь к файлу журнала; `nil`, если App Group недоступна.
     static var url: URL? {

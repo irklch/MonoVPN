@@ -25,8 +25,17 @@ enum XrayConfigurationBuilder {
         static let internalDNS = "dns-internal"
     }
 
-    /// DoH-сервер внутри туннеля (по IP: не требует разрешения имени).
-    static let remoteDNSServer = "https://1.1.1.1/dns-query"
+    /// DNS-серверы внутри туннеля, по порядку: при ошибке или таймауте Xray переходит к следующему.
+    ///
+    /// Все запросы идут через прокси и заданы по IP (не требуют разрешения имени). Запасные
+    /// нужны потому, что часть серверов не пропускает DoH к Cloudflare: без ответа DNS не
+    /// открывается ни один сайт, хотя сам сервер работает. Последний — обычный DNS по UDP,
+    /// как в большинстве клиентов.
+    static let remoteDNSServers = [
+        "https://1.1.1.1/dns-query",
+        "https://8.8.8.8/dns-query",
+        "8.8.8.8",
+    ]
 
     /// Частные и служебные сети, которые идут напрямую.
     static let privateNetworks = [
@@ -47,7 +56,7 @@ enum XrayConfigurationBuilder {
             ],
             "env": [XrayTunnelLayout.tunFdEnvKey: XrayTunnelLayout.tunFdPlaceholder],
             "dns": [
-                "servers": [remoteDNSServer],
+                "servers": remoteDNSServers,
                 // Только A-записи: если у VPN-сервера нет IPv6, приложения не ждут таймаутов IPv6.
                 // Пакеты IPv6 при этом всё равно попадают в туннель и не обходят VPN.
                 "queryStrategy": "UseIPv4",

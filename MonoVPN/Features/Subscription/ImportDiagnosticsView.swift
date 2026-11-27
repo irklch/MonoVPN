@@ -53,6 +53,8 @@ struct ImportDiagnosticsView: View {
     @State private var tunnel = TunnelDiagnostics()
     /// Последние строки журнала ошибок Xray, новые — первыми.
     @State private var xrayLog: [String] = []
+    /// Подробный журнал Xray (см. `XrayErrorLog.isVerbose`).
+    @State private var isVerboseLog = false
 
     /// Заголовок, отчёты об обновлениях и записи по разделам, без ограничения количества.
     var body: some View {
@@ -75,6 +77,22 @@ struct ImportDiagnosticsView: View {
                         .textSelection(.enabled)
                         .padding(.vertical, 8)
                         .padding(.bottom, 12)
+                }
+                if VPNCore.current == .xray {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("diagnostics.verboseLog", isOn: $isVerboseLog)
+                            .font(.subheadline)
+                            .tint(Mono.Palette.primary)
+                        Text("diagnostics.verboseLog.caption")
+                            .font(.caption)
+                            .foregroundStyle(Mono.Palette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.bottom, 4)
+                    .onChange(of: isVerboseLog) { _, value in
+                        XrayErrorLog.isVerbose = value
+                    }
                 }
                 if !xrayLog.isEmpty {
                     Text("diagnostics.section.xrayLog")
@@ -143,6 +161,7 @@ struct ImportDiagnosticsView: View {
         .onAppear {
             tunnel = TunnelDiagnosticsStore().load()
             xrayLog = XrayErrorLog.recentLines()
+            isVerboseLog = XrayErrorLog.isVerbose
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)

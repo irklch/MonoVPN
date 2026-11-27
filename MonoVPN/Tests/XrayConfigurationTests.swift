@@ -50,7 +50,7 @@ struct XrayConfigurationTests {
         #expect(outbounds.map { $0["protocol"] as? String } == ["vless", "freedom", "dns"])
 
         let dns = try #require(config["dns"] as? [String: Any])
-        #expect(dns["servers"] as? [String] == ["https://1.1.1.1/dns-query"])
+        #expect(dns["servers"] as? [String] == ["https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query", "8.8.8.8"])
 
         let rules = try #require((config["routing"] as? [String: Any])?["rules"] as? [[String: Any]])
         #expect(rules.first?["port"] as? String == "53")
@@ -170,6 +170,18 @@ struct XrayConfigurationTests {
         let log = try #require(prepared["log"] as? [String: Any])
         #expect(log["error"] as? String == "/tmp/xray-error.log")
         #expect(log["loglevel"] as? String == "warning")
+        #expect(log["access"] as? String == "none")
+    }
+
+    /// Подробный журнал меняет только уровень, путь журнала сохраняется.
+    @Test func runtimePreparationSetsVerboseLevel() throws {
+        let template = try XrayConfigurationBuilder.build(for: realityServer(.tcp))
+        let prepared = try decode(XrayRuntimeConfiguration.prepare(
+            template, tunFileDescriptor: 3, resolvedServerAddress: nil, errorLogPath: "/tmp/e.log", logLevel: "info"
+        ))
+        let log = try #require(prepared["log"] as? [String: Any])
+        #expect(log["loglevel"] as? String == "info")
+        #expect(log["error"] as? String == "/tmp/e.log")
         #expect(log["access"] as? String == "none")
     }
 

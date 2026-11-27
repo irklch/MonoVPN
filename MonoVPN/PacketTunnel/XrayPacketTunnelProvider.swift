@@ -139,7 +139,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             template,
             tunFileDescriptor: tun.fd,
             resolvedServerAddress: resolved,
-            errorLogPath: XrayErrorLog.reset()
+            errorLogPath: XrayErrorLog.reset(),
+            logLevel: XrayErrorLog.isVerbose ? "info" : nil
         )
 
         // 5. Ядро.
@@ -151,6 +152,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         diagnostics.update { state in
             state.core = version
             state.coreStartDuration = (coreDuration * 1000).rounded() / 1000
+            if XrayErrorLog.isVerbose {
+                state.record("Подробный журнал Xray включён")
+            }
             state.record("\(version) запущен за \(String(format: "%.3f", coreDuration)) с на \(tun.interfaceName)")
         }
     }

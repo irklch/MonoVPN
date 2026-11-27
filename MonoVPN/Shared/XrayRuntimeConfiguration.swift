@@ -28,20 +28,27 @@ enum XrayRuntimeConfiguration {
     /// того, что видит сервер.
     ///
     /// `errorLogPath` — файл журнала ошибок (`log.error`, см. `XrayErrorLog`); `nil` — не менять.
+    /// `logLevel` — уровень журнала (`info` для подробного журнала); `nil` — не менять.
     static func prepare(
         _ json: String,
         tunFileDescriptor: Int32,
         resolvedServerAddress: String?,
-        errorLogPath: String? = nil
+        errorLogPath: String? = nil,
+        logLevel: String? = nil
     ) throws -> String {
         var root = try object(json)
         var env = root["env"] as? [String: Any] ?? [:]
         env[XrayTunnelLayout.tunFdEnvKey] = String(tunFileDescriptor)
         root["env"] = env
 
-        if let errorLogPath {
+        if errorLogPath != nil || logLevel != nil {
             var log = root["log"] as? [String: Any] ?? [:]
-            log["error"] = errorLogPath
+            if let errorLogPath {
+                log["error"] = errorLogPath
+            }
+            if let logLevel {
+                log["loglevel"] = logLevel
+            }
             root["log"] = log
         }
 
