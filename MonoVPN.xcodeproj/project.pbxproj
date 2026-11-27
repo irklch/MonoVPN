@@ -61,8 +61,8 @@
 		178FBC1F053978EA8A0E1699 /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
 		3E1DD12066C3BD5D521D0450 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
 		4584131C16A682F6A8A981AF /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
 		657350E34AFB37D463DC7294 /* PacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
 		72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
 		7C86CDD51E8219313E31D720 /* MonoVPN.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MonoVPN.entitlements; sourceTree = "<group>"; };
 		94ABBAEC010002E921A53B69 /* Widget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widget-Info.plist"; sourceTree = "<group>"; };
@@ -300,9 +300,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
 				A5A41521C68A91FEFD5C8725 /* Shared */,
 				EFD01462322AC7C758AED2A2 /* Widget */,
-				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
 			);
 			name = MonoVPNWidget;
 			packageProductDependencies = (
@@ -331,10 +331,10 @@
 				254B3BA83E35890E0B900508 /* Resources */,
 				3ECCD82740D19383DD1C8B8A /* App */,
 				609BBAAC42BACA8CD6EFA6D5 /* Core */,
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
 				A5A41521C68A91FEFD5C8725 /* Shared */,
 				DA4BD2639D547A95407459A9 /* Models */,
 				E5C8605DDEB65D53830E2B06 /* Features */,
-				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
 			);
 			name = MonoVPN;
 			packageProductDependencies = (
@@ -482,6 +482,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "MonoVPN/Config/App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Mono VPN";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -544,6 +545,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "MonoVPN/Config/App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Mono VPN";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
