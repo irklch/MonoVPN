@@ -138,7 +138,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let configuration = try XrayRuntimeConfiguration.prepare(
             template,
             tunFileDescriptor: tun.fd,
-            resolvedServerAddress: resolved
+            resolvedServerAddress: resolved,
+            errorLogPath: XrayErrorLog.reset()
         )
 
         // 5. Ядро.

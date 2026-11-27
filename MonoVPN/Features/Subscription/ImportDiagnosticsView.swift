@@ -51,6 +51,8 @@ struct ImportDiagnosticsView: View {
     var reports: [SubscriptionRefreshReport] = []
     /// Диагностика расширения Packet Tunnel (читается при открытии окна).
     @State private var tunnel = TunnelDiagnostics()
+    /// Последние строки журнала ошибок Xray, новые — первыми.
+    @State private var xrayLog: [String] = []
 
     /// Заголовок, отчёты об обновлениях и записи по разделам, без ограничения количества.
     var body: some View {
@@ -68,6 +70,20 @@ struct ImportDiagnosticsView: View {
                         .padding(.bottom, 6)
                     Text(verbatim: TunnelDiagnosticsText.lines(for: tunnel).joined(separator: "\n"))
                         .font(.caption)
+                        .foregroundStyle(Mono.Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .padding(.vertical, 8)
+                        .padding(.bottom, 12)
+                }
+                if !xrayLog.isEmpty {
+                    Text("diagnostics.section.xrayLog")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Mono.Palette.secondary)
+                        .padding(.top, 8)
+                        .padding(.bottom, 6)
+                    Text(verbatim: xrayLog.joined(separator: "\n"))
+                        .font(.caption.monospaced())
                         .foregroundStyle(Mono.Palette.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
@@ -124,7 +140,10 @@ struct ImportDiagnosticsView: View {
             .padding(.bottom, 32)
         }
         .background(Mono.Palette.background.ignoresSafeArea())
-        .onAppear { tunnel = TunnelDiagnosticsStore().load() }
+        .onAppear {
+            tunnel = TunnelDiagnosticsStore().load()
+            xrayLog = XrayErrorLog.recentLines()
+        }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)

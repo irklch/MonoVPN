@@ -287,6 +287,17 @@
         }
       }
     },
+    "diagnostics.section.xrayLog": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Журнал ошибок Xray (новые сверху)"
+          }
+        }
+      }
+    },
     "diagnostics.title": {
       "extractionState": "manual",
       "localizations": {

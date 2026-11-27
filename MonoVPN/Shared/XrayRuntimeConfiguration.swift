@@ -26,11 +26,24 @@ enum XrayRuntimeConfiguration {
     ///
     /// SNI и заголовки Host генератор уже задал явно, поэтому замена адреса на IP не меняет
     /// того, что видит сервер.
-    static func prepare(_ json: String, tunFileDescriptor: Int32, resolvedServerAddress: String?) throws -> String {
+    ///
+    /// `errorLogPath` — файл журнала ошибок (`log.error`, см. `XrayErrorLog`); `nil` — не менять.
+    static func prepare(
+        _ json: String,
+        tunFileDescriptor: Int32,
+        resolvedServerAddress: String?,
+        errorLogPath: String? = nil
+    ) throws -> String {
         var root = try object(json)
         var env = root["env"] as? [String: Any] ?? [:]
         env[XrayTunnelLayout.tunFdEnvKey] = String(tunFileDescriptor)
         root["env"] = env
+
+        if let errorLogPath {
+            var log = root["log"] as? [String: Any] ?? [:]
+            log["error"] = errorLogPath
+            root["log"] = log
+        }
 
         if let resolvedServerAddress,
            var outbounds = root["outbounds"] as? [[String: Any]], !outbounds.isEmpty,

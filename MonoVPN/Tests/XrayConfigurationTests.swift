@@ -160,6 +160,37 @@ struct XrayConfigurationTests {
         }
     }
 
+    /// Путь журнала ошибок попадает в `log.error`, уровень и отключённый журнал доступа сохраняются.
+    @Test func runtimePreparationSetsErrorLog() throws {
+        let server = realityServer(.tcp)
+        let template = try XrayConfigurationBuilder.build(for: server)
+        let prepared = try decode(XrayRuntimeConfiguration.prepare(
+            template, tunFileDescriptor: 3, resolvedServerAddress: nil, errorLogPath: "/tmp/xray-error.log"
+        ))
+        let log = try #require(prepared["log"] as? [String: Any])
+        #expect(log["error"] as? String == "/tmp/xray-error.log")
+        #expect(log["loglevel"] as? String == "warning")
+        #expect(log["access"] as? String == "none")
+    }
+
+    /// Строки журнала Xray: без даты и секретов, пути модулей сохраняются, новые — первыми.
+    @Test func xrayErrorLogLines() {
+        let text = """
+        partial line
+        2026/11/27 16:29:01.123456 [Warning] [1] app/dispatcher: failed to process outbound traffic > proxy/vless/outbound: failed to find an available destination > dial tcp 203.0.113.10:443: i/o timeout
+        2026/11/27 16:29:02.000001 [Warning] [2] transport/internet/reality: key \(Fixture.realityKey) for \(Fixture.uuid)
+        """
+        let lines = XrayErrorLog.lines(from: text, droppingPartialFirstLine: true)
+        #expect(lines.count == 2)
+        #expect(lines[0].hasPrefix("16:29:02 [Warning]"))
+        #expect(lines[0].contains("transport/internet/reality"))
+        #expect(!lines[0].contains(Fixture.realityKey))
+        #expect(!lines[0].contains(Fixture.uuid))
+        #expect(lines[1].contains("proxy/vless/outbound"))
+        #expect(lines[1].contains("i/o timeout"))
+        #expect(!lines[1].contains("203.0.113.10"))
+    }
+
     /// Текст ошибки ядра очищается от UUID, ключей, URL и IP-адресов.
     @Test func errorSanitizer() {
         let raw = "failed to dial 203.0.113.10:443 for \(Fixture.uuid): invalid \"password\": \(Fixture.realityKey) https://sub.example.com/token/abc"

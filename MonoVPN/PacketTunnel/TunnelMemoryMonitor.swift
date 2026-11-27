@@ -57,7 +57,11 @@ final class TunnelMemoryMonitor: @unchecked Sendable {
 
             let timer = DispatchSource.makeTimerSource(queue: queue)
             timer.schedule(deadline: .now(), repeating: interval, leeway: .seconds(1))
-            timer.setEventHandler { [weak self] in self?.sample(force: false) }
+            timer.setEventHandler { [weak self] in
+                self?.sample(force: false)
+                // Тот же таймер держит журнал ошибок Xray в пределах XrayErrorLog.maxSize.
+                XrayErrorLog.trimIfNeeded()
+            }
             timer.resume()
             self.timer = timer
 
