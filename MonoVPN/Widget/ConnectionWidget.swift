@@ -117,6 +117,9 @@ struct ConnectionWidgetView: View {
                 .invalidatableContent()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Непрозрачный фон внутри кнопки: виджет отрисовывается заранее, и прозрачные места
+        // могут не считаться частью кнопки — тогда тап по ним открывает приложение.
+        .background(Self.background)
         .contentShape(Rectangle())
     }
 

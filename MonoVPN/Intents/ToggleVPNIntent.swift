@@ -15,6 +15,13 @@ struct ToggleVPNIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "widget.intent.title"
     /// Скрывает интент из Команд и Spotlight — он нужен только виджету.
     static let isDiscoverable = false
+    /// Никогда не выводить приложение на передний план: VPN включается в фоне.
+    static let openAppWhenRun = false
+
+    /// iOS 26+: явный фоновый режим. Без него система может выполнять интент
+    /// с открытием приложения (быстрый тап по виджету открывал приложение и не включал VPN).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     /// `true` — подключить, `false` — отключить.
     @Parameter(title: "widget.intent.connect")
