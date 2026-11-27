@@ -1,77 +1,101 @@
 import SwiftUI
 
-/// Окно выбора сервера из текущей подписки.
-struct ServersView: View {
+/// Список серверов текущей подписки на главном экране.
+///
+/// Прокручивается только сам список; при появлении он прокручивается к выбранному серверу,
+/// чтобы быстро переключаться между соседними серверами. Нажатие выбирает сервер (при включённом
+/// VPN — переподключает туннель). Неподдерживаемые ядром серверы показаны неактивными.
+struct ServerListView: View {
     /// Модель главного экрана: список серверов, выбор и обновление подписки.
     let model: HomeViewModel
-    /// Закрывает окно после выбора сервера.
-    @Environment(\.dismiss) private var dismiss
 
-    /// Заголовок с кнопкой обновления, ошибка и список серверов или пустое состояние.
+    /// Заголовок с кнопкой обновления, ошибка подписки и прокручиваемый список.
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeader(title: "servers.title") {
-                if model.subscription?.isRefreshable == true {
-                    IconButton(
-                        systemName: "arrow.clockwise",
-                        accessibilityLabel: "servers.refresh",
-                        isLoading: model.isRefreshing
-                    ) {
-                        Task { await model.refreshSubscription() }
-                    }
-                    .disabled(model.isRefreshing || model.isImporting)
-                }
-            }
-            .padding(.horizontal, Mono.Metrics.screenPadding)
-
+            header
             if let error = model.subscriptionError {
                 NoticeText(systemName: "exclamationmark.circle", text: error)
-                    .padding(.horizontal, Mono.Metrics.screenPadding)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 10)
             }
-
+            Divider().overlay(Mono.Palette.separator)
             if model.servers.isEmpty {
                 emptyState
             } else {
                 list
             }
         }
-        .background(Mono.Palette.background.ignoresSafeArea())
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(28)
     }
 
-    /// Прокручиваемый список всех распознанных серверов с разделителями.
-    /// Неподдерживаемые ядром серверы показаны неактивными; подробности — в диагностике импорта.
+    /// «Серверы · N» и кнопка обновления подписки.
+    private var header: some View {
+        HStack(spacing: 12) {
+            Text("servers.title")
+                .font(.footnote.weight(.semibold))
+                .textCase(.uppercase)
+                .tracking(1.2)
+                .foregroundStyle(Mono.Palette.secondary)
+                .accessibilityAddTraits(.isHeader)
+            if !model.servers.isEmpty {
+                Text(verbatim: "\(model.servers.count)")
+                    .font(.footnote.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Mono.Palette.tertiary)
+            }
+            Spacer(minLength: 8)
+            if model.subscription?.isRefreshable == true {
+                IconButton(
+                    systemName: "arrow.clockwise",
+                    accessibilityLabel: "servers.refresh",
+                    isLoading: model.isRefreshing
+                ) {
+                    Task { await model.refreshSubscription() }
+                }
+                .disabled(model.isRefreshing || model.isImporting)
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
+    /// Прокручиваемые строки серверов с разделителями.
     private var list: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(model.servers) { server in
-                    ServerRow(server: server, isSelected: server.id == model.selectedServer?.id) {
-                        Task {
-                            await model.select(server)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(model.servers) { server in
+                        ServerRow(server: server, isSelected: server.id == model.selectedServer?.id) {
+                            Task { await model.select(server) }
                         }
-                        dismiss()
-                    }
-                    .disabled(model.isBusy || !server.isSupported)
-                    if server.id != model.servers.last?.id {
-                        Divider().overlay(Mono.Palette.separator)
+                        .disabled(model.isBusy || !server.isSupported)
+                        .id(server.id)
+                        if server.id != model.servers.last?.id {
+                            Divider().overlay(Mono.Palette.separator)
+                        }
                     }
                 }
             }
-            .padding(.horizontal, Mono.Metrics.screenPadding)
-            .padding(.bottom, 32)
+            .onAppear { scrollToSelection(proxy, animated: false) }
+            // После обновления подписки порядок и состав могут измениться.
+            .onChange(of: model.subscription?.lastUpdated) { scrollToSelection(proxy, animated: true) }
+        }
+    }
+
+    /// Прокручивает список так, чтобы выбранный сервер оказался по центру.
+    private func scrollToSelection(_ proxy: ScrollViewProxy, animated: Bool) {
+        guard let id = model.selectedServer?.id else { return }
+        // Ждём первую раскладку: ленивый список должен знать свои размеры.
+        Task { @MainActor in
+            if animated {
+                withAnimation(Mono.Animation.state) { proxy.scrollTo(id, anchor: .center) }
+            } else {
+                proxy.scrollTo(id, anchor: .center)
+            }
         }
     }
 
     /// Пустое состояние, когда в подписке нет серверов.
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "server.rack")
-                .font(.system(size: 34, weight: .light))
-                .foregroundStyle(Mono.Palette.tertiary)
+        VStack(spacing: 8) {
+            Spacer(minLength: 0)
             Text("servers.empty.title")
                 .font(.headline)
                 .foregroundStyle(Mono.Palette.primary)
@@ -79,10 +103,9 @@ struct ServersView: View {
                 .font(.subheadline)
                 .foregroundStyle(Mono.Palette.secondary)
                 .multilineTextAlignment(.center)
-            Spacer()
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 40)
     }
 }
 
@@ -122,7 +145,7 @@ private struct ServerRow: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(.vertical, 16)
+            .padding(.vertical, 14)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

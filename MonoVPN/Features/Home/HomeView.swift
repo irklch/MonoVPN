@@ -1,22 +1,23 @@
 import SwiftUI
 
-/// Главный экран: статус и счётчик времени, большая кнопка подключения,
-/// карточка выбранного сервера и переходы к подписке и списку серверов.
+/// Главный экран: статус и счётчик времени, большая кнопка подключения и список серверов.
+///
+/// Верхняя часть (статус, счётчик, кнопка) не прокручивается; ниже — список серверов
+/// примерно на половину экрана, который прокручивается отдельно и при появлении
+/// показывает выбранный сервер.
 struct HomeView: View {
     /// Модель главного экрана.
     @Bindable var model: HomeViewModel
     /// Открыто ли окно подписки.
     @State private var isSubscriptionPresented = false
-    /// Открыто ли окно выбора сервера.
-    @State private var isServersPresented = false
 
-    /// Вёрстка экрана и модальные окна подписки, серверов и уведомления о конфиденциальности.
+    /// Вёрстка экрана и модальные окна подписки и уведомления о конфиденциальности.
     var body: some View {
         VStack(spacing: 0) {
+            // Неподвижная часть: не прокручивается вместе со списком.
             header
-            Spacer(minLength: 24)
             ConnectionStatusView(state: model.state, connectedDate: model.vpn.connectedDate, hasServer: model.selectedServer != nil)
-            Spacer(minLength: 32)
+                .padding(.top, 12)
             ConnectButton(
                 state: model.state,
                 isBusy: model.isBusy,
@@ -24,10 +25,13 @@ struct HomeView: View {
             ) {
                 Task { await model.toggleConnection() }
             }
+            .padding(.top, 24)
             caption
-                .padding(.top, 22)
-            Spacer(minLength: 24)
-            footer
+                .padding(.top, 16)
+            // Список серверов занимает всё оставшееся место (примерно половину экрана).
+            serverArea
+                .padding(.top, 12)
+                .frame(maxHeight: .infinity, alignment: .bottom)
         }
         .padding(.horizontal, Mono.Metrics.screenPadding)
         .padding(.bottom, 12)
@@ -36,9 +40,6 @@ struct HomeView: View {
         .animation(Mono.Animation.state, value: model.selectedServer?.id)
         .sheet(isPresented: $isSubscriptionPresented) {
             SubscriptionView(model: model)
-        }
-        .sheet(isPresented: $isServersPresented) {
-            ServersView(model: model)
         }
         .sheet(isPresented: $model.isPrivacyNoticePresented) {
             PrivacyNoticeView {
@@ -94,14 +95,12 @@ struct HomeView: View {
         }
     }
 
-    /// Нижняя часть: карточка выбранного сервера или кнопка добавления подписки.
+    /// Нижняя часть: список серверов или, без подписки, кнопка её добавления.
     @ViewBuilder
-    private var footer: some View {
-        if let server = model.selectedServer {
-            ServerCard(server: server, isLocked: model.isBusy) {
-                isServersPresented = true
-            }
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
+    private var serverArea: some View {
+        if model.subscription != nil {
+            ServerListView(model: model)
+                .transition(.opacity)
         } else {
             Button("home.addSubscription") {
                 isSubscriptionPresented = true
@@ -212,48 +211,5 @@ private struct PressScaleStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
-    }
-}
-
-/// Нижняя карточка с выбранным сервером.
-private struct ServerCard: View {
-    /// Выбранный сервер.
-    let server: ServerConfiguration
-    /// Блокирует карточку, пока идёт подключение/отключение.
-    let isLocked: Bool
-    /// Действие по нажатию — открыть список серверов.
-    let action: () -> Void
-
-    /// Иконка, имя и протокол сервера и стрелка выбора.
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                Image(systemName: "server.rack")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Mono.Palette.primary)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Mono.Palette.background))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(server.name)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Mono.Palette.primary)
-                        .lineLimit(1)
-                    Text(server.protocolSummary)
-                        .font(.footnote)
-                        .foregroundStyle(Mono.Palette.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Mono.Palette.secondary)
-            }
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: Mono.Metrics.cornerRadius, style: .continuous).fill(Mono.Palette.fill))
-            .contentShape(RoundedRectangle(cornerRadius: Mono.Metrics.cornerRadius, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .disabled(isLocked)
-        .accessibilityHint(Text("home.serverCard.hint"))
     }
 }

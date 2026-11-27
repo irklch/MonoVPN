@@ -815,17 +815,6 @@
         }
       }
     },
-    "home.serverCard.hint": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Открывает список серверов"
-          }
-        }
-      }
-    },
     "home.subscription.accessibility": {
       "extractionState": "manual",
       "localizations": {

@@ -48,7 +48,7 @@ MonoVPN/
 ├── Models/                  ServerConfiguration, Subscription, AppState
 ├── Features/
 │   ├── Home/                HomeView, HomeViewModel
-│   ├── Servers/             ServersView (sheet «Серверы»)
+│   ├── Servers/             ServerListView (список серверов на главном экране)
 │   ├── Subscription/        SubscriptionView (sheet «Подписка»)
 │   └── Privacy/             PrivacyNoticeView (перед первым подключением)
 ├── DesignSystem/            Палитра, стили кнопок, общие компоненты
