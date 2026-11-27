@@ -117,7 +117,6 @@ struct ConnectionWidgetView: View {
                 .foregroundStyle(state == .connected ? .white : .white.opacity(0.55))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .invalidatableContent()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Непрозрачный фон внутри кнопки: виджет отрисовывается заранее, и прозрачные места
@@ -133,14 +132,14 @@ struct ConnectionWidgetView: View {
         return ZStack {
             Circle()
                 .fill(isOn ? Color.white : Color.white.opacity(fullColor ? 0.1 : 0.2))
-                .widgetAccentable()
             Image(systemName: "power")
                 .font(.system(size: 30, weight: .semibold))
                 .foregroundStyle(isOn && fullColor ? Self.background : Color.white)
                 .opacity(isDimmed ? 0.45 : 1)
         }
         .frame(width: 76, height: 76)
-        .invalidatableContent()
+        // Без `widgetAccentable()` и `invalidatableContent()`: система выносит такие слои
+        // отдельно от кнопки, и тап по кругу открывал приложение вместо включения VPN.
     }
 
     /// Виджет отрисовывается в полном цвете (не тонирован системой).
