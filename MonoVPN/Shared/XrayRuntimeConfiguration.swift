@@ -8,31 +8,36 @@ enum XrayRuntimeConfiguration {
     enum Failure: Error, Equatable {
         /// Конфигурация не является JSON-объектом.
         case notAnObject
-        /// В конфигурации нет outbound прокси с адресом сервера.
-        case missingServer
     }
 
-    /// Адрес сервера из первого outbound (`settings.vnext[0]` для VLESS/VMess,
-    /// `settings.servers[0]` для Trojan/Shadowsocks).
-    static func serverAddress(in json: String) throws -> String {
-        let root = try object(json)
-        guard let address = serverEntry(in: root)?["address"] as? String, !address.isEmpty else {
-            throw Failure.missingServer
-        }
-        return address
-    }
-
-    /// Подставляет дескриптор TUN в `env["xray.tun.fd"]` и, если передан, IP сервера вместо имени.
+    /// Имена серверов (не IP) во всех outbound, без повторов, в порядке появления.
     ///
-    /// SNI и заголовки Host генератор уже задал явно, поэтому замена адреса на IP не меняет
-    /// того, что видит сервер.
+    /// У сервера из ссылки это одно имя; у конфига из JSON-подписки с балансировщиком —
+    /// десятки. Расширение разрешает их до применения сетевых настроек туннеля.
+    static func serverHosts(in json: String) throws -> [String] {
+        let root = try object(json)
+        var hosts: [String] = []
+        for outbound in root["outbounds"] as? [[String: Any]] ?? [] {
+            for host in addresses(of: outbound) where !isIPAddress(host) && !hosts.contains(host) {
+                hosts.append(host)
+            }
+        }
+        return hosts
+    }
+
+    /// Подставляет дескриптор TUN в `env["xray.tun.fd"]`, путь и уровень журнала и, для имён
+    /// из `resolvedAddresses`, заранее разрешённые IP вместо имён серверов.
+    ///
+    /// Перед заменой адреса имя явно закрепляется там, где Xray взял бы его из адреса:
+    /// SNI для TLS/REALITY, Host для WebSocket/HTTPUpgrade/XHTTP, `:authority` для gRPC без
+    /// TLS. Поэтому замена на IP не меняет того, что видит сервер.
     ///
     /// `errorLogPath` — файл журнала ошибок (`log.error`, см. `XrayErrorLog`); `nil` — не менять.
     /// `logLevel` — уровень журнала (`info` для подробного журнала); `nil` — не менять.
     static func prepare(
         _ json: String,
         tunFileDescriptor: Int32,
-        resolvedServerAddress: String?,
+        resolvedAddresses: [String: String],
         errorLogPath: String? = nil,
         logLevel: String? = nil
     ) throws -> String {
@@ -52,22 +57,114 @@ enum XrayRuntimeConfiguration {
             root["log"] = log
         }
 
-        if let resolvedServerAddress,
-           var outbounds = root["outbounds"] as? [[String: Any]], !outbounds.isEmpty,
-           var settings = outbounds[0]["settings"] as? [String: Any] {
-            for key in ["vnext", "servers"] {
-                if var entries = settings[key] as? [[String: Any]], !entries.isEmpty {
-                    entries[0]["address"] = resolvedServerAddress
-                    settings[key] = entries
-                }
-            }
-            outbounds[0]["settings"] = settings
-            root["outbounds"] = outbounds
+        if !resolvedAddresses.isEmpty, let outbounds = root["outbounds"] as? [[String: Any]] {
+            root["outbounds"] = outbounds.map { replacingAddresses(in: $0, with: resolvedAddresses) }
         }
 
         let data = try JSONSerialization.data(withJSONObject: root, options: [.sortedKeys, .withoutEscapingSlashes])
         guard let result = String(data: data, encoding: .utf8) else { throw Failure.notAnObject }
         return result
+    }
+
+    /// Адреса серверов outbound: `settings.vnext[].address`, `settings.servers[].address`
+    /// или плоский `settings.address` (новый формат Xray).
+    private static func addresses(of outbound: [String: Any]) -> [String] {
+        guard let settings = outbound["settings"] as? [String: Any] else { return [] }
+        var result: [String] = []
+        for key in ["vnext", "servers"] {
+            for entry in settings[key] as? [[String: Any]] ?? [] {
+                if let address = entry["address"] as? String, !address.isEmpty {
+                    result.append(address)
+                }
+            }
+        }
+        if let address = settings["address"] as? String, !address.isEmpty {
+            result.append(address)
+        }
+        return result
+    }
+
+    /// Outbound с IP вместо имён и закреплёнными SNI/Host.
+    private static func replacingAddresses(in original: [String: Any], with resolved: [String: String]) -> [String: Any] {
+        var outbound = original
+        guard var settings = outbound["settings"] as? [String: Any] else { return outbound }
+        var replacedHost: String?
+
+        func replace(_ entry: inout [String: Any]) {
+            guard let address = entry["address"] as? String, let ip = resolved[address] else { return }
+            entry["address"] = ip
+            replacedHost = replacedHost ?? address
+        }
+        for key in ["vnext", "servers"] {
+            if var entries = settings[key] as? [[String: Any]] {
+                for index in entries.indices {
+                    replace(&entries[index])
+                }
+                settings[key] = entries
+            }
+        }
+        replace(&settings)
+        guard let host = replacedHost else { return outbound }
+        outbound["settings"] = settings
+        outbound["streamSettings"] = pinningNames(in: outbound["streamSettings"] as? [String: Any] ?? [:], host: host)
+        return outbound
+    }
+
+    /// Задаёт SNI/Host/authority именем сервера там, где они не заданы явно.
+    private static func pinningNames(in original: [String: Any], host: String) -> [String: Any] {
+        var stream = original
+        let security = (stream["security"] as? String ?? "none").lowercased()
+        var serverName: String?
+        for key in ["tlsSettings", "realitySettings"] where security == (key == "tlsSettings" ? "tls" : "reality") {
+            var settings = stream[key] as? [String: Any] ?? [:]
+            if (settings["serverName"] as? String ?? "").isEmpty {
+                settings["serverName"] = host
+            }
+            serverName = settings["serverName"] as? String
+            stream[key] = settings
+        }
+
+        switch (stream["network"] as? String ?? "tcp").lowercased() {
+        case "ws", "websocket":
+            var ws = stream["wsSettings"] as? [String: Any] ?? [:]
+            let headerHost = (ws["headers"] as? [String: Any])?.first { $0.key.lowercased() == "host" }?.value as? String
+            if (ws["host"] as? String ?? "").isEmpty, (headerHost ?? "").isEmpty {
+                ws["host"] = host
+            }
+            stream["wsSettings"] = ws
+        case "httpupgrade":
+            var upgrade = stream["httpupgradeSettings"] as? [String: Any] ?? [:]
+            if (upgrade["host"] as? String ?? "").isEmpty {
+                upgrade["host"] = host
+            }
+            stream["httpupgradeSettings"] = upgrade
+        case "xhttp", "splithttp":
+            // Xray берёт Host из SNI (TLS/REALITY), иначе из адреса.
+            let key = stream["xhttpSettings"] != nil || stream["splithttpSettings"] == nil ? "xhttpSettings" : "splithttpSettings"
+            var xhttp = stream[key] as? [String: Any] ?? [:]
+            if (xhttp["host"] as? String ?? "").isEmpty {
+                xhttp["host"] = serverName ?? host
+            }
+            stream[key] = xhttp
+        case "grpc", "gun":
+            if serverName == nil {
+                var grpc = stream["grpcSettings"] as? [String: Any] ?? [:]
+                if (grpc["authority"] as? String ?? "").isEmpty {
+                    grpc["authority"] = host
+                }
+                stream["grpcSettings"] = grpc
+            }
+        default:
+            break
+        }
+        return stream
+    }
+
+    /// Является ли строка IPv4- или IPv6-адресом.
+    static func isIPAddress(_ host: String) -> Bool {
+        var ipv4 = in_addr()
+        var ipv6 = in6_addr()
+        return inet_pton(AF_INET, host, &ipv4) == 1 || inet_pton(AF_INET6, host, &ipv6) == 1
     }
 
     /// Разбирает JSON-объект.
@@ -77,18 +174,6 @@ enum XrayRuntimeConfiguration {
             throw Failure.notAnObject
         }
         return root
-    }
-
-    /// Первая запись сервера в первом outbound.
-    private static func serverEntry(in root: [String: Any]) -> [String: Any]? {
-        guard let outbounds = root["outbounds"] as? [[String: Any]],
-              let settings = outbounds.first?["settings"] as? [String: Any] else { return nil }
-        for key in ["vnext", "servers"] {
-            if let entries = settings[key] as? [[String: Any]], let first = entries.first {
-                return first
-            }
-        }
-        return nil
     }
 }
 

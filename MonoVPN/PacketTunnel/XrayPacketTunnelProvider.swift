@@ -116,15 +116,16 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             throw TunnelError.missingConfiguration
         }
 
-        // 2. Адрес сервера — до сетевых настроек туннеля.
-        let address = try XrayRuntimeConfiguration.serverAddress(in: template)
-        var resolved: String?
-        if !Self.isIPAddress(address) {
-            resolved = Self.resolve(address)
-            if resolved == nil {
-                // Не удалось — Xray разрешит имя сам при подключении.
-                diagnostics.update { $0.record("Имя сервера не разрешено заранее") }
-            }
+        // 2. Адреса серверов — до сетевых настроек туннеля. У конфига из JSON-подписки
+        // с балансировщиком их десятки: разрешаются параллельно, с общим ограничением времени.
+        let hosts = try XrayRuntimeConfiguration.serverHosts(in: template)
+        let resolved = Self.resolveAll(hosts, timeout: Self.resolveTimeout)
+        if resolved.count < hosts.count {
+            // Неразрешённые имена Xray разрешит сам при подключении.
+            let message = hosts.count == 1
+                ? "Имя сервера не разрешено заранее"
+                : "Имена серверов разрешены заранее: \(resolved.count) из \(hosts.count)"
+            diagnostics.update { $0.record(message) }
         }
 
         // 3. Сетевые настройки туннеля.
@@ -138,7 +139,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let configuration = try XrayRuntimeConfiguration.prepare(
             template,
             tunFileDescriptor: tun.fd,
-            resolvedServerAddress: resolved,
+            resolvedAddresses: resolved,
             errorLogPath: XrayErrorLog.reset(),
             logLevel: XrayErrorLog.isVerbose ? "info" : nil
         )
@@ -221,6 +222,36 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         return inet_pton(AF_INET, host, &ipv4) == 1 || inet_pton(AF_INET6, host, &ipv6) == 1
     }
 
+    /// Общее ограничение времени на разрешение имён серверов перед запуском.
+    static let resolveTimeout: TimeInterval = 5
+    /// Сколько имён разрешается одновременно.
+    static let resolveConcurrency = 16
+
+    /// Разрешает имена параллельно (не больше `resolveConcurrency` сразу) и возвращает то,
+    /// что успело разрешиться за `timeout`; остальные потоки дорабатывают в фоне.
+    static func resolveAll(_ hosts: [String], timeout: TimeInterval) -> [String: String] {
+        guard !hosts.isEmpty else { return [:] }
+        if hosts.count == 1 {
+            return resolve(hosts[0]).map { [hosts[0]: $0] } ?? [:]
+        }
+        let state = ResolveState(hosts: hosts)
+        let group = DispatchGroup()
+        let queue = DispatchQueue(label: "com.irklch.monovpn.resolve", qos: .userInitiated, attributes: .concurrent)
+        for _ in 0..<min(resolveConcurrency, hosts.count) {
+            group.enter()
+            queue.async {
+                defer { group.leave() }
+                while let host = state.next() {
+                    if let ip = resolve(host) {
+                        state.store(ip, for: host)
+                    }
+                }
+            }
+        }
+        _ = group.wait(timeout: .now() + timeout)
+        return state.snapshot()
+    }
+
     /// Разрешает имя сервера системным резолвером (до поднятия туннеля); IPv4 предпочтительнее.
     static func resolve(_ host: String) -> String? {
         var hints = addrinfo()
@@ -284,6 +315,37 @@ private final class PathDescription: @unchecked Sendable {
             defer { value = newValue }
             return value
         }
+    }
+}
+
+/// Общая очередь имён и результаты для `resolveAll`.
+private final class ResolveState: @unchecked Sendable {
+    private let lock = NSLock()
+    private let hosts: [String]
+    private var index = 0
+    private var results: [String: String] = [:]
+
+    init(hosts: [String]) {
+        self.hosts = hosts
+    }
+
+    /// Следующее имя или `nil`, если все разобраны.
+    func next() -> String? {
+        lock.withLock {
+            guard index < hosts.count else { return nil }
+            defer { index += 1 }
+            return hosts[index]
+        }
+    }
+
+    /// Сохраняет IP для имени.
+    func store(_ ip: String, for host: String) {
+        lock.withLock { results[host] = ip }
+    }
+
+    /// Копия результатов на текущий момент.
+    func snapshot() -> [String: String] {
+        lock.withLock { results }
     }
 }
 #endif

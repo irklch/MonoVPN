@@ -165,9 +165,9 @@ struct XrayConfigurationTests {
     @Test func runtimePreparation() throws {
         let server = realityServer(.xhttp(path: "/x", host: nil, mode: nil), host: "edge.example.com", sni: nil)
         let template = try XrayConfigurationBuilder.build(for: server)
-        #expect(try XrayRuntimeConfiguration.serverAddress(in: template) == "edge.example.com")
+        #expect(try XrayRuntimeConfiguration.serverHosts(in: template) == ["edge.example.com"])
 
-        let prepared = try decode(XrayRuntimeConfiguration.prepare(template, tunFileDescriptor: 9, resolvedServerAddress: "198.51.100.20"))
+        let prepared = try decode(XrayRuntimeConfiguration.prepare(template, tunFileDescriptor: 9, resolvedAddresses: ["edge.example.com": "198.51.100.20"]))
         #expect((prepared["env"] as? [String: String])?["xray.tun.fd"] == "9")
         let (outbound, stream) = try proxy(prepared)
         let vnext = try #require(((outbound["settings"] as? [String: Any])?["vnext"] as? [[String: Any]])?.first)
@@ -175,12 +175,12 @@ struct XrayConfigurationTests {
         #expect((stream["realitySettings"] as? [String: Any])?["serverName"] as? String == "edge.example.com")
         #expect((stream["xhttpSettings"] as? [String: Any])?["host"] as? String == "edge.example.com")
 
-        let unchanged = try decode(XrayRuntimeConfiguration.prepare(template, tunFileDescriptor: 9, resolvedServerAddress: nil))
+        let unchanged = try decode(XrayRuntimeConfiguration.prepare(template, tunFileDescriptor: 9, resolvedAddresses: [:]))
         let address = try #require(((try proxy(unchanged).outbound["settings"] as? [String: Any])?["vnext"] as? [[String: Any]])?.first?["address"])
         #expect(address as? String == "edge.example.com")
 
         #expect(throws: XrayRuntimeConfiguration.Failure.notAnObject) {
-            try XrayRuntimeConfiguration.prepare("[]", tunFileDescriptor: 1, resolvedServerAddress: nil)
+            try XrayRuntimeConfiguration.prepare("[]", tunFileDescriptor: 1, resolvedAddresses: [:])
         }
     }
 
@@ -189,7 +189,7 @@ struct XrayConfigurationTests {
         let server = realityServer(.tcp)
         let template = try XrayConfigurationBuilder.build(for: server)
         let prepared = try decode(XrayRuntimeConfiguration.prepare(
-            template, tunFileDescriptor: 3, resolvedServerAddress: nil, errorLogPath: "/tmp/xray-error.log"
+            template, tunFileDescriptor: 3, resolvedAddresses: [:], errorLogPath: "/tmp/xray-error.log"
         ))
         let log = try #require(prepared["log"] as? [String: Any])
         #expect(log["error"] as? String == "/tmp/xray-error.log")
@@ -201,7 +201,7 @@ struct XrayConfigurationTests {
     @Test func runtimePreparationSetsVerboseLevel() throws {
         let template = try XrayConfigurationBuilder.build(for: realityServer(.tcp))
         let prepared = try decode(XrayRuntimeConfiguration.prepare(
-            template, tunFileDescriptor: 3, resolvedServerAddress: nil, errorLogPath: "/tmp/e.log", logLevel: "info"
+            template, tunFileDescriptor: 3, resolvedAddresses: [:], errorLogPath: "/tmp/e.log", logLevel: "info"
         ))
         let log = try #require(prepared["log"] as? [String: Any])
         #expect(log["loglevel"] as? String == "info")

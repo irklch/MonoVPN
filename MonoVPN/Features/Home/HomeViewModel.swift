@@ -81,7 +81,10 @@ final class HomeViewModel {
     /// она один раз обновляется: от ядра зависит, какие серверы поддерживаются.
     func start() async {
         await vpn.load()
-        if let subscription = appState.subscription, (subscription.core ?? .singBox) != VPNCore.current {
+        if let subscription = appState.subscription,
+           (subscription.core ?? .singBox) != VPNCore.current
+           // Подписка сохранена до появления JSON-подписок: один раз пробуем загрузить конфиги панели.
+           || (VPNCore.current == .xray && subscription.format == nil && subscription.isRefreshable) {
             await refreshSubscription()
         }
     }

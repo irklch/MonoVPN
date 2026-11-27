@@ -6,12 +6,15 @@ import os
 struct AppStateStore: Sendable {
     /// Хранилище Keychain, через которое идут все чтения и записи.
     private let storage: SecureStorage
+    /// Конфиги серверов JSON-подписки (файл, не Keychain).
+    private let panelStore: PanelConfigurationStore
     /// Логгер категории «Storage»; пишет только тип ошибки, без данных.
     private static let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "Storage")
 
     /// Создаёт хранилище; в тестах можно передать свой `SecureStorage`.
-    init(storage: SecureStorage = SecureStorage()) {
+    init(storage: SecureStorage = SecureStorage(), panelStore: PanelConfigurationStore = PanelConfigurationStore()) {
         self.storage = storage
+        self.panelStore = panelStore
     }
 
     /// Загружает сохранённое состояние приложения.
@@ -31,6 +34,10 @@ struct AppStateStore: Sendable {
 
     /// Сохраняет состояние приложения в Keychain в виде JSON.
     func save(_ state: AppState) throws {
+        // Сначала конфиги JSON-подписки: состояние не должно ссылаться на несохранённые конфиги.
+        if let configurations = state.subscription?.panelConfigurations {
+            try panelStore.save(configurations)
+        }
         let data = try JSONEncoder().encode(state)
         try storage.set(data, for: .appState)
     }
@@ -47,6 +54,7 @@ struct AppStateStore: Sendable {
 
     /// Удаляет все данные приложения из Keychain: состояние, конфигурацию и последнюю ошибку.
     func removeAll() throws {
+        try panelStore.removeAll()
         try storage.remove(.appState)
         try storage.remove(.tunnelConfiguration)
         try storage.remove(.lastTunnelError)
