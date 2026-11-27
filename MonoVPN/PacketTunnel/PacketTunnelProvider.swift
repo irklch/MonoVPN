@@ -15,6 +15,8 @@ import WidgetKit
 /// `startVPNTunnel(options:)`) позволяет системе и Настройкам перезапускать туннель,
 /// в том числе когда устройство заблокировано.
 final class PacketTunnelProvider: NEPacketTunnelProvider {
+    /// Счётчики трафика для главного экрана приложения (utun ищется при первом запросе).
+    private let traffic = TunnelTrafficResponder()
     /// Логгер категории «PacketTunnel»; пишет только события, без адресов и секретов.
     private static let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "PacketTunnel")
 
@@ -52,7 +54,13 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     override func stopTunnel(with reason: NEProviderStopReason) async {
         Self.logger.info("Stopping tunnel, reason \(reason.rawValue, privacy: .public)")
         stopCore()
+        traffic.setInterfaceName(nil)
         reloadWidget()
+    }
+
+    /// Сообщения от приложения: сейчас только запрос счётчиков трафика.
+    override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
+        completionHandler?(traffic.response(to: messageData))
     }
 
     /// Даёт виджету на домашнем экране подхватить новый статус, в том числе когда VPN

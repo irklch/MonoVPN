@@ -19,6 +19,8 @@ struct HomeView: View {
                 header
                 ConnectionStatusView(state: model.state, connectedDate: model.vpn.connectedDate, hasServer: model.selectedServer != nil)
                     .padding(.top, 12)
+                TrafficMeterView(vpn: model.vpn)
+                    .padding(.top, 10)
                 ConnectButton(
                     state: model.state,
                     isBusy: model.isBusy,
@@ -26,7 +28,7 @@ struct HomeView: View {
                 ) {
                     Task { await model.toggleConnection() }
                 }
-                .padding(.top, 24)
+                .padding(.top, 20)
                 caption
                     .padding(.top, 16)
             }

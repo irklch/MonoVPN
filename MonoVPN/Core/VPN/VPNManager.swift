@@ -123,6 +123,23 @@ final class VPNManager {
         try await TunnelController.stop(manager)
     }
 
+    /// Запрашивает у расширения счётчики трафика туннеля; `nil`, если туннель не запущен
+    /// или расширение не ответило.
+    func fetchTraffic() async -> TunnelTrafficSnapshot? {
+        guard let session = manager?.connection as? NETunnelProviderSession,
+              session.status == .connected else { return nil }
+        let response: Data? = await withCheckedContinuation { continuation in
+            do {
+                try session.sendProviderMessage(TunnelProviderMessage.trafficRequest) { data in
+                    continuation.resume(returning: data)
+                }
+            } catch {
+                continuation.resume(returning: nil)
+            }
+        }
+        return response.flatMap { try? JSONDecoder().decode(TunnelTrafficSnapshot.self, from: $0) }
+    }
+
     // MARK: - Приватное
 
     /// Обрабатывает `NEVPNStatusDidChange`: применяет новый статус и распознаёт неудачный запуск.

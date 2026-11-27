@@ -826,6 +826,50 @@
         }
       }
     },
+    "home.traffic.download.accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Входящий трафик"
+          }
+        }
+      }
+    },
+    "home.traffic.noResponse": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данные уходят, но ответа нет: сервер не пропускает трафик"
+          }
+        }
+      }
+    },
+    "home.traffic.rate %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/с"
+          }
+        }
+      }
+    },
+    "home.traffic.upload.accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходящий трафик"
+          }
+        }
+      }
+    },
     "privacy.accept": {
       "extractionState": "manual",
       "localizations": {

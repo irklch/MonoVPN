@@ -33,6 +33,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private var pathMonitor: NWPathMonitor?
     /// Работает ли ядро, запущенное этим провайдером.
     private var isCoreRunning = false
+    /// Счётчики трафика для главного экрана приложения.
+    private let traffic = TunnelTrafficResponder()
 
     // MARK: - Жизненный цикл
 
@@ -87,6 +89,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         pathMonitor = nil
         memoryMonitor.stop()
         stopCore()
+        traffic.setInterfaceName(nil)
         diagnostics.update { state in
             state.stoppedAt = .now
             state.stopReason = name
@@ -96,6 +99,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     /// Даёт виджету подхватить новый статус.
+    /// Сообщения от приложения: сейчас только запрос счётчиков трафика.
+    override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
+        completionHandler?(traffic.response(to: messageData))
+    }
+
     private func reloadWidget() {
         WidgetCenter.shared.reloadTimelines(ofKind: AppIdentifiers.widgetKind)
     }
@@ -126,6 +134,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         guard let tun = TunnelFileDescriptor.find() else {
             throw TunnelError.core("TUN file descriptor not found")
         }
+        traffic.setInterfaceName(tun.interfaceName)
         let configuration = try XrayRuntimeConfiguration.prepare(
             template,
             tunFileDescriptor: tun.fd,
