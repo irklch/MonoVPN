@@ -1,0 +1,37 @@
+// Mono VPN — единый источник идентификаторов, версий и настроек подписи.
+//
+// После активации собственного членства в Apple Developer Program:
+//   1. Укажите свой личный Team ID в DEVELOPMENT_TEAM ниже
+//      (или выберите команду в Xcode → Signing & Capabilities; Xcode запишет её в каждый таргет).
+//   2. Если какой-то идентификатор ниже занят, меняйте его здесь — таргеты, entitlements,
+//      файлы Info.plist и Swift-код читают значения отсюда.
+// Никогда не указывайте здесь команду работодателя / корпоративную команду.
+
+// Отображаемое имя приложения на домашнем экране.
+MONO_DISPLAY_NAME = Mono VPN
+// Bundle ID основного приложения; от него строятся идентификаторы расширений.
+MONO_BUNDLE_ID = com.irklch.monovpn
+// Bundle ID расширения Packet Tunnel (сам VPN-туннель).
+MONO_TUNNEL_BUNDLE_ID = $(MONO_BUNDLE_ID).PacketTunnel
+// Bundle ID расширения виджета для домашнего экрана.
+MONO_WIDGET_BUNDLE_ID = $(MONO_BUNDLE_ID).Widget
+// App Group, общая для приложения, туннеля и виджета.
+MONO_APP_GROUP = group.com.irklch.monovpn
+
+// Версия для пользователя (App Store / настройки).
+MARKETING_VERSION = 1.0.0
+// Номер сборки; увеличивается при каждой загрузке.
+CURRENT_PROJECT_VERSION = 1
+// Минимальная поддерживаемая версия iOS.
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+
+// Автоматическое управление подписью в Xcode.
+CODE_SIGN_STYLE = Automatic
+// Team ID разработчика; пусто, пока не указан личный аккаунт.
+DEVELOPMENT_TEAM =
+
+// VPN-ядро сборки. MONO_CORE_XRAY — Xray-core (LibXray.xcframework, собирается
+// MonoVPN/Scripts/build-libxray.sh). Чтобы вернуться к sing-box: удалите MONO_CORE_XRAY
+// и замените в target PacketTunnel → Frameworks LibXray.xcframework на Libbox.xcframework
+// (MonoVPN/Scripts/build-libbox.sh). Две Go-библиотеки в одном процессе линковать нельзя.
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) MONO_CORE_XRAY

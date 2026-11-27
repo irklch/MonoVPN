@@ -1,0 +1,1271 @@
+{
+  "sourceLanguage": "ru",
+  "strings": {
+    "app.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mono VPN"
+          }
+        }
+      }
+    },
+    "common.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отмена"
+          }
+        }
+      }
+    },
+    "diagnostics.ignored %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не применены параметры: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.open %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диагностика импорта: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.appBug": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ответ не изменился, а статусы изменились — ошибка в приложении"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.counts %lld %lld %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всего: %1$lld · поддерживается: %2$lld · не поддерживается: %3$lld · с ошибками: %4$lld"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.diff %lld %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавлено: %1$lld · удалено: %2$lld · изменено: %3$lld"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.duplicateNames %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторяющихся имён серверов: %lld (при перестановке строк их статус по имени может казаться изменившимся)"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.hash %@ %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хеш ответа: %1$@ (%2$lld байт)"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.nondeterministic %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недетерминированный разбор ссылок: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.parameters %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменились параметры: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.protocols %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Протоколы: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.reasons %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Причины: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.response.changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ответ провайдера изменился"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.response.first": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Первая загрузка этого источника"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.response.identical": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ответ провайдера не изменился"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.response.reordered": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ответ провайдера изменился только порядком строк"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.security %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Безопасность: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.statusChange %@ %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: %2$@ → %3$@ (изменились: %4$@)"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.supported": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "поддерживается"
+          }
+        }
+      }
+    },
+    "diagnostics.refresh.transports %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Транспорты: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.section.ignored %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Частично применены: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.section.refreshes %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновления подписки: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.section.skipped %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не распознаны: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.section.tunnel": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Packet Tunnel"
+          }
+        }
+      }
+    },
+    "diagnostics.section.unsupported %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не поддерживаются ядром: %lld"
+          }
+        }
+      }
+    },
+    "diagnostics.section.xrayLog": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Журнал ошибок Xray (новые сверху)"
+          }
+        }
+      }
+    },
+    "diagnostics.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Диагностика импорта"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.core %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ядро: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.error %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка запуска: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.memory %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Память: %1$@ МБ, пик %2$@ МБ, до лимита iOS ещё %3$@ МБ"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.start %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запуск туннеля: %1$@ с (ядро: %2$@ с)"
+          }
+        }
+      }
+    },
+    "diagnostics.tunnel.stop %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последняя остановка: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.verboseLog": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подробный журнал Xray"
+          }
+        }
+      }
+    },
+    "diagnostics.verboseLog.caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Действует со следующего подключения. В журнал попадут ошибки каждого соединения и адреса сайтов — выключите после проверки."
+          }
+        }
+      }
+    },
+    "error.input.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставьте ссылку подписки"
+          }
+        }
+      }
+    },
+    "error.input.insecure": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужна ссылка HTTPS: подписка по HTTP может быть перехвачена"
+          }
+        }
+      }
+    },
+    "error.input.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это не похоже на ссылку подписки"
+          }
+        }
+      }
+    },
+    "error.link.flowRequiresTLS": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "xtls-rprx-vision требует TLS или REALITY и транспорт TCP"
+          }
+        }
+      }
+    },
+    "error.link.invalidPort": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В ссылке указан неверный порт"
+          }
+        }
+      }
+    },
+    "error.link.invalidRealityPublicKey": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неверный публичный ключ REALITY (pbk)"
+          }
+        }
+      }
+    },
+    "error.link.invalidRealityShortID": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неверный short ID REALITY (sid)"
+          }
+        }
+      }
+    },
+    "error.link.invalidUUID": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В ссылке указан неверный UUID"
+          }
+        }
+      }
+    },
+    "error.link.malformed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылка повреждена или имеет неверный формат"
+          }
+        }
+      }
+    },
+    "error.link.missingHost": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В ссылке не указан адрес сервера"
+          }
+        }
+      }
+    },
+    "error.link.missingPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В ссылке не указан пароль"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedEncryption %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шифрование VLESS «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedFlow %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flow «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedGRPCAuthority %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gRPC authority «%@» отличается от SNI — в sing-box их нельзя задать раздельно"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedHeaderType %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Маскировка заголовков «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedScheme %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Протокол «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedSecurity %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Режим безопасности «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedShadowsocksMethod %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шифр Shadowsocks «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedShadowsocksPlugin %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плагин Shadowsocks «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.link.unsupportedTransport %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Транспорт «%@» не поддерживается"
+          }
+        }
+      }
+    },
+    "error.network.generic %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка сети (%lld)"
+          }
+        }
+      }
+    },
+    "error.network.host": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось связаться с сервером подписки"
+          }
+        }
+      }
+    },
+    "error.network.offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет подключения к интернету"
+          }
+        }
+      }
+    },
+    "error.network.status %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер подписки ответил ошибкой %lld"
+          }
+        }
+      }
+    },
+    "error.network.timeout": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер подписки не ответил вовремя"
+          }
+        }
+      }
+    },
+    "error.network.tls": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить защищённое соединение с сервером подписки"
+          }
+        }
+      }
+    },
+    "error.network.tooLarge": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ответ сервера подписки слишком большой"
+          }
+        }
+      }
+    },
+    "error.storage %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось сохранить данные: %@"
+          }
+        }
+      }
+    },
+    "error.subscription.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подписка пуста"
+          }
+        }
+      }
+    },
+    "error.subscription.noSupportedServers %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В подписке нет поддерживаемых серверов. %@"
+          }
+        }
+      }
+    },
+    "error.subscription.unsupportedFormat %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Формат подписки не поддерживается (%@). Нужен список ссылок, в том числе в Base64."
+          }
+        }
+      }
+    },
+    "error.switch.notStopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текущее подключение не остановилось — изменения не применены."
+          }
+        }
+      }
+    },
+    "format.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "неизвестный"
+          }
+        }
+      }
+    },
+    "home.addSubscription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить подписку"
+          }
+        }
+      }
+    },
+    "home.button.connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключить VPN"
+          }
+        }
+      }
+    },
+    "home.button.disconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить VPN"
+          }
+        }
+      }
+    },
+    "home.caption.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Устанавливаем соединение…"
+          }
+        }
+      }
+    },
+    "home.caption.disconnecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключаемся…"
+          }
+        }
+      }
+    },
+    "home.caption.noSubscription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавьте подписку, чтобы подключиться"
+          }
+        }
+      }
+    },
+    "home.caption.tapToConnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите, чтобы подключиться"
+          }
+        }
+      }
+    },
+    "home.caption.tapToDisconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите, чтобы отключиться"
+          }
+        }
+      }
+    },
+    "home.duration.accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Длительность подключения"
+          }
+        }
+      }
+    },
+    "home.subscription.accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подписка"
+          }
+        }
+      }
+    },
+    "home.traffic.download.accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Входящий трафик"
+          }
+        }
+      }
+    },
+    "home.traffic.noResponse": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данные уходят, но ответа нет: сервер не пропускает трафик"
+          }
+        }
+      }
+    },
+    "home.traffic.rate %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/с"
+          }
+        }
+      }
+    },
+    "home.traffic.upload.accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходящий трафик"
+          }
+        }
+      }
+    },
+    "privacy.accept": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Понятно, подключиться"
+          }
+        }
+      }
+    },
+    "privacy.item.client": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mono VPN — это VPN-клиент. У приложения нет собственных серверов: оно подключается к серверу из вашей подписки."
+          }
+        }
+      }
+    },
+    "privacy.item.noTracking": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение не использует аналитику, не собирает статистику и не хранит историю посещённых сайтов."
+          }
+        }
+      }
+    },
+    "privacy.item.storage": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылка подписки и параметры серверов хранятся только на этом устройстве, в Связке ключей."
+          }
+        }
+      }
+    },
+    "privacy.item.traffic": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "После подключения весь интернет-трафик устройства передаётся через выбранный сервер и обрабатывается вашим VPN-провайдером. DNS-запросы шифруются и через этот же сервер отправляются в Cloudflare DNS (1.1.1.1)."
+          }
+        }
+      }
+    },
+    "privacy.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перед подключением"
+          }
+        }
+      }
+    },
+    "servers.empty.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавьте подписку — здесь появятся её серверы."
+          }
+        }
+      }
+    },
+    "servers.empty.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет серверов"
+          }
+        }
+      }
+    },
+    "servers.refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить подписку"
+          }
+        }
+      }
+    },
+    "servers.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Серверы"
+          }
+        }
+      }
+    },
+    "servers.unsupported %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Не поддерживается"
+          }
+        }
+      }
+    },
+    "status.connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключено"
+          }
+        }
+      }
+    },
+    "status.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение"
+          }
+        }
+      }
+    },
+    "status.disconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключено"
+          }
+        }
+      }
+    },
+    "status.disconnecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключение"
+          }
+        }
+      }
+    },
+    "status.notConfigured": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не настроено"
+          }
+        }
+      }
+    },
+    "status.reasserting": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переподключение"
+          }
+        }
+      }
+    },
+    "subscription.delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить подписку"
+          }
+        }
+      }
+    },
+    "subscription.delete.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        }
+      }
+    },
+    "subscription.delete.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN будет отключён, ссылка и все серверы будут удалены с устройства."
+          }
+        }
+      }
+    },
+    "subscription.delete.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить подписку?"
+          }
+        }
+      }
+    },
+    "subscription.input.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTPS-подписка (список ссылок, в том числе в Base64) или отдельная ссылка vless://, vmess://, trojan://, ss://."
+          }
+        }
+      }
+    },
+    "subscription.input.label.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылка подписки"
+          }
+        }
+      }
+    },
+    "subscription.input.label.replace": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить подписку"
+          }
+        }
+      }
+    },
+    "subscription.input.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://… или vless://…"
+          }
+        }
+      }
+    },
+    "subscription.paste": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставить из буфера обмена"
+          }
+        }
+      }
+    },
+    "subscription.refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить"
+          }
+        }
+      }
+    },
+    "subscription.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить"
+          }
+        }
+      }
+    },
+    "subscription.servers.count %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Серверов: %lld"
+          }
+        }
+      }
+    },
+    "subscription.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подписка"
+          }
+        }
+      }
+    },
+    "subscription.updated %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновлено: %@"
+          }
+        }
+      }
+    },
+    "widget.intent.connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключить"
+          }
+        }
+      }
+    },
+    "widget.intent.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключить или отключить Mono VPN"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

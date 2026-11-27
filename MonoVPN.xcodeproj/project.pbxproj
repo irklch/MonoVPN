@@ -1,0 +1,819 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		34665EE79F83FE752F27D50F /* PacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 657350E34AFB37D463DC7294 /* PacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		429555205FC931599A861E79 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E1DD12066C3BD5D521D0450 /* libresolv.tbd */; };
+		4FB07BD5F34137484971E17C /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */; };
+		6C1E0A3B9F2D4E7A8B5C1D20 /* LibXray.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */; };
+		A134703A93A4E12B2DD44E54 /* MonoVPNWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0FD7488223EA0E20BD335592 /* MonoVPNWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C3AAFA1E2FEDC8CD9E9C1AE7 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4584131C16A682F6A8A981AF /* UIKit.framework */; };
+		FFE7AB6E35BF5BE4D882D37A /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D5A381026795B88E6997436F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B38F1907A909A3BFAB09298F;
+			remoteInfo = PacketTunnel;
+		};
+		E5D5E092EF6F929627BA6054 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D627CACEBFAAA465612B83CD;
+			remoteInfo = MonoVPNWidget;
+		};
+		EC8D852BA6BBB132088FC360 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F01C2E624E08A72BC055B46F;
+			remoteInfo = MonoVPN;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FCF3278E84DC1D0913840280 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				34665EE79F83FE752F27D50F /* PacketTunnel.appex in Embed Foundation Extensions */,
+				A134703A93A4E12B2DD44E54 /* MonoVPNWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		05FED624FC2A41C67D990A31 /* MonoVPNTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MonoVPNTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0FD7488223EA0E20BD335592 /* MonoVPNWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MonoVPNWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		178FBC1F053978EA8A0E1699 /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
+		3E1DD12066C3BD5D521D0450 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
+		4584131C16A682F6A8A981AF /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
+		657350E34AFB37D463DC7294 /* PacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
+		7C86CDD51E8219313E31D720 /* MonoVPN.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MonoVPN.entitlements; sourceTree = "<group>"; };
+		94ABBAEC010002E921A53B69 /* Widget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widget-Info.plist"; sourceTree = "<group>"; };
+		996AD237BC284D463E664FFE /* MonoVPN.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MonoVPN.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B480ECC36F2C74889BFE5FF3 /* PacketTunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PacketTunnel.entitlements; sourceTree = "<group>"; };
+		B6928ACC5925AC04D0F641D3 /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App-Info.plist"; sourceTree = "<group>"; };
+		E6FB64EF0FB2492094577B79 /* Identifiers.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Identifiers.xcconfig; sourceTree = "<group>"; };
+		F7FF5E88463C98C884D4AF5F /* PacketTunnel-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "PacketTunnel-Info.plist"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		165BF74A252DB2D530A37C06 /* DesignSystem */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		254B3BA83E35890E0B900508 /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		3ECCD82740D19383DD1C8B8A /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = App;
+			sourceTree = "<group>";
+		};
+		609BBAAC42BACA8CD6EFA6D5 /* Core */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Core;
+			sourceTree = "<group>";
+		};
+		62CF458512426858189F7032 /* Scripts */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Scripts;
+			sourceTree = "<group>";
+		};
+		6491EB9999E9AA3AECF04D93 /* PacketTunnel */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PacketTunnel;
+			sourceTree = "<group>";
+		};
+		7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Intents;
+			sourceTree = "<group>";
+		};
+		A5A41521C68A91FEFD5C8725 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		C47F599922025FA162E469A0 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		DA4BD2639D547A95407459A9 /* Models */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Models;
+			sourceTree = "<group>";
+		};
+		E5C8605DDEB65D53830E2B06 /* Features */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Features;
+			sourceTree = "<group>";
+		};
+		EFD01462322AC7C758AED2A2 /* Widget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Widget;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5EA7DCD295B0CE2DBB2B16A3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FFE7AB6E35BF5BE4D882D37A /* NetworkExtension.framework in Frameworks */,
+				6C1E0A3B9F2D4E7A8B5C1D20 /* LibXray.xcframework in Frameworks */,
+				429555205FC931599A861E79 /* libresolv.tbd in Frameworks */,
+				C3AAFA1E2FEDC8CD9E9C1AE7 /* UIKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D5472D53D914A9EB75D1CF2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F632D1C4C1233B72DC884625 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FFEADA95D75BCDA2C6FBEAE0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4FB07BD5F34137484971E17C /* NetworkExtension.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		113236722DEE1DC96F378B9D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				996AD237BC284D463E664FFE /* MonoVPN.app */,
+				657350E34AFB37D463DC7294 /* PacketTunnel.appex */,
+				0FD7488223EA0E20BD335592 /* MonoVPNWidget.appex */,
+				05FED624FC2A41C67D990A31 /* MonoVPNTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		71DC27D9F8E3B109C877BFC4 = {
+			isa = PBXGroup;
+			children = (
+				AF7FDBBE3D258A41820E0AC5 /* MonoVPN */,
+				82DAB9F55C0B6BAF4399D627 /* Frameworks */,
+				113236722DEE1DC96F378B9D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		82DAB9F55C0B6BAF4399D627 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6C1E0A3B9F2D4E7A8B5C1D21 /* LibXray.xcframework */,
+				72C5A8480AB57DB4D6FF8ECB /* NetworkExtension.framework */,
+				3E1DD12066C3BD5D521D0450 /* libresolv.tbd */,
+				4584131C16A682F6A8A981AF /* UIKit.framework */,
+			);
+			path = Frameworks;
+			sourceTree = "<group>";
+		};
+		89B104369EBC5E85E7E43C6B /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E6FB64EF0FB2492094577B79 /* Identifiers.xcconfig */,
+				B6928ACC5925AC04D0F641D3 /* App-Info.plist */,
+				F7FF5E88463C98C884D4AF5F /* PacketTunnel-Info.plist */,
+				94ABBAEC010002E921A53B69 /* Widget-Info.plist */,
+				7C86CDD51E8219313E31D720 /* MonoVPN.entitlements */,
+				B480ECC36F2C74889BFE5FF3 /* PacketTunnel.entitlements */,
+				178FBC1F053978EA8A0E1699 /* Widget.entitlements */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		AF7FDBBE3D258A41820E0AC5 /* MonoVPN */ = {
+			isa = PBXGroup;
+			children = (
+				3ECCD82740D19383DD1C8B8A /* App */,
+				609BBAAC42BACA8CD6EFA6D5 /* Core */,
+				DA4BD2639D547A95407459A9 /* Models */,
+				E5C8605DDEB65D53830E2B06 /* Features */,
+				165BF74A252DB2D530A37C06 /* DesignSystem */,
+				254B3BA83E35890E0B900508 /* Resources */,
+				A5A41521C68A91FEFD5C8725 /* Shared */,
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
+				6491EB9999E9AA3AECF04D93 /* PacketTunnel */,
+				EFD01462322AC7C758AED2A2 /* Widget */,
+				C47F599922025FA162E469A0 /* Tests */,
+				62CF458512426858189F7032 /* Scripts */,
+				89B104369EBC5E85E7E43C6B /* Config */,
+			);
+			path = MonoVPN;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B38F1907A909A3BFAB09298F /* PacketTunnel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB5B640055A8139A71467B61 /* Build configuration list for PBXNativeTarget "PacketTunnel" */;
+			buildPhases = (
+				22B84B3EB3A5F17BDA3571C3 /* Sources */,
+				5EA7DCD295B0CE2DBB2B16A3 /* Frameworks */,
+				9A70F43BA246C59A9F4485C5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6491EB9999E9AA3AECF04D93 /* PacketTunnel */,
+				A5A41521C68A91FEFD5C8725 /* Shared */,
+			);
+			name = PacketTunnel;
+			packageProductDependencies = (
+			);
+			productName = PacketTunnel;
+			productReference = 657350E34AFB37D463DC7294 /* PacketTunnel.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		BF7A7D35C945289B6BFD3C14 /* MonoVPNTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A11DE872D2C9D9E8F5FECB31 /* Build configuration list for PBXNativeTarget "MonoVPNTests" */;
+			buildPhases = (
+				8849FEAF2DFA4EA13C2F49B8 /* Sources */,
+				F632D1C4C1233B72DC884625 /* Frameworks */,
+				524392F064CC737C805D6C72 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D0606A00E5A561947869F1FE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C47F599922025FA162E469A0 /* Tests */,
+			);
+			name = MonoVPNTests;
+			packageProductDependencies = (
+			);
+			productName = MonoVPNTests;
+			productReference = 05FED624FC2A41C67D990A31 /* MonoVPNTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D627CACEBFAAA465612B83CD /* MonoVPNWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4ADE31F166D92D65C0C6F75B /* Build configuration list for PBXNativeTarget "MonoVPNWidget" */;
+			buildPhases = (
+				85C67D168679AE17A660BC13 /* Sources */,
+				9D5472D53D914A9EB75D1CF2 /* Frameworks */,
+				7E5623FF644B78703C95CC5C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A5A41521C68A91FEFD5C8725 /* Shared */,
+				EFD01462322AC7C758AED2A2 /* Widget */,
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
+			);
+			name = MonoVPNWidget;
+			packageProductDependencies = (
+			);
+			productName = MonoVPNWidget;
+			productReference = 0FD7488223EA0E20BD335592 /* MonoVPNWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		F01C2E624E08A72BC055B46F /* MonoVPN */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF7259B0DCBBE475EAB9296F /* Build configuration list for PBXNativeTarget "MonoVPN" */;
+			buildPhases = (
+				F927BC1DF9D9402659F50E5D /* Sources */,
+				FFEADA95D75BCDA2C6FBEAE0 /* Frameworks */,
+				5B79E5318A231EABF0A6DD21 /* Resources */,
+				FCF3278E84DC1D0913840280 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				ECA936A955024BE0504BA6E0 /* PBXTargetDependency */,
+				697C6CE515FCA105619BE40C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				165BF74A252DB2D530A37C06 /* DesignSystem */,
+				254B3BA83E35890E0B900508 /* Resources */,
+				3ECCD82740D19383DD1C8B8A /* App */,
+				609BBAAC42BACA8CD6EFA6D5 /* Core */,
+				A5A41521C68A91FEFD5C8725 /* Shared */,
+				DA4BD2639D547A95407459A9 /* Models */,
+				E5C8605DDEB65D53830E2B06 /* Features */,
+				7A1C3E5B9D2F4A6C8E0B1D3F /* Intents */,
+			);
+			name = MonoVPN;
+			packageProductDependencies = (
+			);
+			productName = MonoVPN;
+			productReference = 996AD237BC284D463E664FFE /* MonoVPN.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					B38F1907A909A3BFAB09298F = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					BF7A7D35C945289B6BFD3C14 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = F01C2E624E08A72BC055B46F;
+					};
+					D627CACEBFAAA465612B83CD = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					F01C2E624E08A72BC055B46F = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = 757D19E72591453AC5C4BDEC /* Build configuration list for PBXProject "MonoVPN" */;
+			developmentRegion = ru;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				ru,
+				en,
+				Base,
+			);
+			mainGroup = 71DC27D9F8E3B109C877BFC4;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 113236722DEE1DC96F378B9D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F01C2E624E08A72BC055B46F /* MonoVPN */,
+				B38F1907A909A3BFAB09298F /* PacketTunnel */,
+				D627CACEBFAAA465612B83CD /* MonoVPNWidget */,
+				BF7A7D35C945289B6BFD3C14 /* MonoVPNTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		524392F064CC737C805D6C72 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5B79E5318A231EABF0A6DD21 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7E5623FF644B78703C95CC5C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9A70F43BA246C59A9F4485C5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		22B84B3EB3A5F17BDA3571C3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		85C67D168679AE17A660BC13 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8849FEAF2DFA4EA13C2F49B8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F927BC1DF9D9402659F50E5D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		697C6CE515FCA105619BE40C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D627CACEBFAAA465612B83CD /* MonoVPNWidget */;
+			targetProxy = E5D5E092EF6F929627BA6054 /* PBXContainerItemProxy */;
+		};
+		D0606A00E5A561947869F1FE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F01C2E624E08A72BC055B46F /* MonoVPN */;
+			targetProxy = EC8D852BA6BBB132088FC360 /* PBXContainerItemProxy */;
+		};
+		ECA936A955024BE0504BA6E0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B38F1907A909A3BFAB09298F /* PacketTunnel */;
+			targetProxy = D5A381026795B88E6997436F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		090B55871C6DBA1E07CFA1D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MonoVPN/Config/MonoVPN.entitlements;
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "MonoVPN/Config/App-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+			};
+			name = Debug;
+		};
+		0C7026CE440292B3A1AF0E7F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_BUNDLE_ID).Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MonoVPN.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MonoVPN";
+			};
+			name = Release;
+		};
+		27741954F2AB0C0C2589C7E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MonoVPN/Config/PacketTunnel.entitlements;
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "MonoVPN/Config/PacketTunnel-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_TUNNEL_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		2AA66827AD4D37A692F78300 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MonoVPN/Config/MonoVPN.entitlements;
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "MonoVPN/Config/App-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+			};
+			name = Release;
+		};
+		8CB3F73F0F23AADF9A630845 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E6FB64EF0FB2492094577B79 /* Identifiers.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		AEE463E4931FD07BA73EEA37 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_BUNDLE_ID).Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MonoVPN.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MonoVPN";
+			};
+			name = Debug;
+		};
+		E0F38071C0E11642BDC190FB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MonoVPN/Config/Widget.entitlements;
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "MonoVPN/Config/Widget-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_WIDGET_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		E7A912E8E62FBC168A5B1B03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MonoVPN/Config/PacketTunnel.entitlements;
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "MonoVPN/Config/PacketTunnel-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_TUNNEL_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		E9F48DCBE741C1EA61A27C3F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MonoVPN/Config/Widget.entitlements;
+				DEVELOPMENT_TEAM = CY87MBJTCB;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "MonoVPN/Config/Widget-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(MONO_WIDGET_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		F1FCCFB1B0C2728D154EB98F /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E6FB64EF0FB2492094577B79 /* Identifiers.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4ADE31F166D92D65C0C6F75B /* Build configuration list for PBXNativeTarget "MonoVPNWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E9F48DCBE741C1EA61A27C3F /* Debug */,
+				E0F38071C0E11642BDC190FB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		757D19E72591453AC5C4BDEC /* Build configuration list for PBXProject "MonoVPN" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8CB3F73F0F23AADF9A630845 /* Debug */,
+				F1FCCFB1B0C2728D154EB98F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A11DE872D2C9D9E8F5FECB31 /* Build configuration list for PBXNativeTarget "MonoVPNTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AEE463E4931FD07BA73EEA37 /* Debug */,
+				0C7026CE440292B3A1AF0E7F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB5B640055A8139A71467B61 /* Build configuration list for PBXNativeTarget "PacketTunnel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E7A912E8E62FBC168A5B1B03 /* Debug */,
+				27741954F2AB0C0C2589C7E2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF7259B0DCBBE475EAB9296F /* Build configuration list for PBXNativeTarget "MonoVPN" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				090B55871C6DBA1E07CFA1D7 /* Debug */,
+				2AA66827AD4D37A692F78300 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}
