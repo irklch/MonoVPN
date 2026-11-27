@@ -156,6 +156,33 @@ enum SubscriptionDiagnostics {
         return snapshot(lines: lines, responseHash: hash(data), byteCount: data.count, at: date)
     }
 
+    /// Снимок JSON-подписки Xray: по записи на конфиг; изменение конфига видно по хешу.
+    static func snapshot(ofJSON data: Data, servers: [ServerConfiguration], at date: Date = .now) -> SubscriptionSnapshot {
+        let entries = servers.map { server in
+            let protocolToken = safeToken(server.proxyProtocol.rawValue)
+            let count = server.panel?.serverCount ?? 1
+            return SubscriptionEntrySnapshot(
+                group: "json|\(server.name)",
+                name: server.name,
+                scheme: "json",
+                transport: count > 1 ? "balancer:\(count)" : protocolToken,
+                security: "-",
+                status: supportedStatus,
+                facets: ["config": String((server.panel?.configHash ?? "").prefix(16))]
+            )
+        }
+        let normalized = servers.map { "\($0.id)=\($0.panel?.configHash ?? "")" }.sorted().joined(separator: "\n")
+        return SubscriptionSnapshot(
+            createdAt: date,
+            responseHash: hash(data),
+            normalizedHash: hash(Data(normalized.utf8)),
+            byteCount: data.count,
+            entries: entries,
+            duplicateCount: 0,
+            nondeterministicCount: 0
+        )
+    }
+
     /// Снимок одиночной ссылки (источник `.link`).
     static func snapshot(ofLink link: String, at date: Date = .now) -> SubscriptionSnapshot {
         let data = Data(link.utf8)

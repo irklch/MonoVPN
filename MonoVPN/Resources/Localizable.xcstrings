@@ -683,6 +683,17 @@
         }
       }
     },
+    "error.panelConfiguration.missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфигурация сервера не найдена. Обновите подписку"
+          }
+        }
+      }
+    },
     "error.storage %@": {
       "extractionState": "manual",
       "localizations": {
@@ -701,6 +712,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подписка пуста"
+          }
+        }
+      }
+    },
+    "error.subscription.jsonConfig": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфиг Xray не удалось подготовить к запуску"
           }
         }
       }
@@ -965,6 +987,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перед подключением"
+          }
+        }
+      }
+    },
+    "server.summary.balancer %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Авто-выбор из %lld"
+          }
+        }
+      }
+    },
+    "server.unnamed %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер %lld"
           }
         }
       }

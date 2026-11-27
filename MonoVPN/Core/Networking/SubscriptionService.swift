@@ -100,6 +100,14 @@ struct SubscriptionService: Sendable {
     /// Скачивает (или заново разбирает) подписку. При ошибке бросает исключение без побочных
     /// эффектов, чтобы вызывающий мог сохранить последнюю рабочую конфигурацию.
     func refresh(_ source: Subscription.Source) async throws -> Subscription {
+        // Xray: сначала готовые конфиги панели (`<подписка>/json`) — в них есть серверы,
+        // которых нет в ссылках (балансировщики «Авто», Hysteria). Если панель их не отдаёт,
+        // используется обычная подписка со ссылками.
+        if case let .remote(url) = source, VPNCore.current == .xray,
+           let subscription = try? await refreshJSON(source: source, url: url) {
+            return subscription
+        }
+
         let result: SubscriptionParseResult
         let snapshot: SubscriptionSnapshot
         switch source {
@@ -125,8 +133,41 @@ struct SubscriptionService: Sendable {
             issues: result.issues,
             lastUpdated: snapshot.createdAt,
             snapshot: snapshot,
-            core: VPNCore.current
+            core: VPNCore.current,
+            format: .links,
+            // Пустой словарь стирает конфиги прежней JSON-подписки.
+            panelConfigurations: [:]
         )
+    }
+
+    /// Загружает JSON-подписку Xray; `nil` — панель её не отдаёт (ошибка, не JSON, нет серверов).
+    private func refreshJSON(source: Subscription.Source, url: URL) async throws -> Subscription? {
+        let data = try await download(Self.jsonURL(for: url))
+        guard XrayJSONSubscriptionParser.looksLikeJSONSubscription(data) else { return nil }
+        let result = try XrayJSONSubscriptionParser.parse(data)
+        return Subscription(
+            source: source,
+            servers: result.servers,
+            issues: result.issues,
+            lastUpdated: .now,
+            snapshot: SubscriptionDiagnostics.snapshot(ofJSON: data, servers: result.servers),
+            core: VPNCore.current,
+            format: .xrayJSON,
+            panelConfigurations: result.configurations
+        )
+    }
+
+    /// Адрес JSON-подписки: `<путь подписки>/json`, query сохраняется.
+    static func jsonURL(for url: URL) -> URL {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url.appendingPathComponent("json")
+        }
+        var path = components.percentEncodedPath
+        while path.hasSuffix("/") {
+            path.removeLast()
+        }
+        components.percentEncodedPath = path + "/json"
+        return components.url ?? url.appendingPathComponent("json")
     }
 
     /// Проверяет ввод пользователя, не обращаясь к сети.

@@ -71,6 +71,18 @@ struct TLSSettings: Codable, Hashable, Sendable {
     var reality: RealitySettings?
 }
 
+/// Сервер из JSON-подписки Xray: готовый конфиг панели, который запускается целиком
+/// (со своими DNS, маршрутами, балансировщиками). Сам конфиг содержит секреты и хранится
+/// отдельно — в `PanelConfigurationStore`, по `ServerConfiguration.id`.
+struct PanelServerInfo: Codable, Hashable, Sendable {
+    /// Описание для списка: «VLESS · XHTTP · REALITY», «Hysteria», «Авто-выбор из 191».
+    var summary: String
+    /// Сколько серверов (outbound прокси) в конфиге; больше одного — балансировщик.
+    var serverCount: Int
+    /// Хеш конфига: смена хеша означает, что работающий туннель нужно перезапустить.
+    var configHash: String
+}
+
 /// Один сервер из подписки, уже проверенный.
 ///
 /// Содержит секреты (UUID / пароль), поэтому сохраняется только в Keychain.
@@ -115,6 +127,9 @@ struct ServerConfiguration: Codable, Hashable, Identifiable, Sendable {
     /// Параметры TLS; `nil` — соединение без TLS.
     var tls: TLSSettings?
 
+    /// Сервер из JSON-подписки Xray (готовый конфиг панели); `nil` — сервер из ссылки.
+    var panel: PanelServerInfo?
+
     /// Имена безвредных параметров из ссылки, которые sing-box не поддерживает и которые
     /// поэтому не применены. Показываются только в диагностике импорта (без значений).
     var ignoredParameters: [String] = []
@@ -131,6 +146,9 @@ struct ServerConfiguration: Codable, Hashable, Identifiable, Sendable {
     /// Короткое техническое описание для интерфейса, например «VLESS · REALITY».
     /// Для неподдерживаемого сервера — только протокол: транспорт и TLS не разобраны.
     var protocolSummary: String {
+        if let panel {
+            return panel.summary
+        }
         var parts = [proxyProtocol.displayName]
         guard isSupported else { return parts[0] }
         if transport != .tcp {

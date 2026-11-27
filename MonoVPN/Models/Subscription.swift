@@ -24,6 +24,26 @@ struct Subscription: Codable, Hashable, Sendable {
     var snapshot: SubscriptionSnapshot? = nil
     /// Ядро, для которого разобраны серверы; `nil` — сохранено до появления выбора ядра (sing-box).
     var core: VPNCore? = nil
+    /// Формат ответа подписки; `nil` — сохранено до появления JSON-подписок (ссылки).
+    var format: Format? = nil
+    /// Конфиги серверов JSON-подписки (по ID сервера) — только что после загрузки.
+    ///
+    /// В Keychain вместе с подпиской не сохраняются (мегабайты): при сохранении состояния их
+    /// забирает `PanelConfigurationStore`. После чтения состояния из Keychain — `nil`.
+    var panelConfigurations: [String: String]? = nil
+
+    /// Формат, в котором пришла подписка.
+    enum Format: String, Codable, Hashable, Sendable {
+        /// Ссылки (`vless://`, `ss://`, ...), в том числе в Base64.
+        case links
+        /// Готовые конфиги Xray (`<подписка>/json`).
+        case xrayJSON
+    }
+
+    /// Сохраняемые поля: `panelConfigurations` в Keychain не попадает.
+    private enum CodingKeys: String, CodingKey {
+        case source, servers, issues, lastUpdated, snapshot, core, format
+    }
 
     /// Можно ли обновить подписку: только для подписки по URL.
     var isRefreshable: Bool {

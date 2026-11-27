@@ -241,12 +241,29 @@ enum XrayConfigurationBuilder {
 /// Выбирает генератор конфигурации туннеля для ядра текущей сборки.
 enum TunnelConfigurationBuilder {
     /// Конфигурация туннеля для сервера: JSON sing-box или Xray.
-    static func build(for server: ServerConfiguration) throws -> String {
+    static func build(for server: ServerConfiguration, panelStore: PanelConfigurationStore = PanelConfigurationStore()) throws -> String {
+        if server.panel != nil {
+            // Готовый конфиг из JSON-подписки (уже адаптирован при загрузке).
+            guard VPNCore.current == .xray, let json = panelStore.configuration(for: server.id) else {
+                throw PanelConfigurationError.missing
+            }
+            return json
+        }
         switch VPNCore.current {
         case .singBox:
             return try VPNConfigurationBuilder.build(for: server)
         case .xray:
             return try XrayConfigurationBuilder.build(for: server)
         }
+    }
+}
+
+/// Ошибка сборки конфигурации сервера из JSON-подписки.
+enum PanelConfigurationError: LocalizedError, Equatable {
+    /// Конфиг сервера не найден (например, сохранение не удалось) — нужно обновить подписку.
+    case missing
+
+    var errorDescription: String? {
+        String(localized: "error.panelConfiguration.missing")
     }
 }
