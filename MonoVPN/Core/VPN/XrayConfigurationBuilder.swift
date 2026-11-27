@@ -2,7 +2,7 @@ import Foundation
 
 /// Строит JSON-конфигурацию Xray-core (v26.11.9) для одного сервера.
 ///
-/// Модель маршрутизации (та же, что у сборки с sing-box):
+/// Модель маршрутизации:
 /// - Пакеты получает встроенный TUN inbound Xray (`protocol: "tun"`) по дескриптору, который
 ///   передаёт NetworkExtension (`env["xray.tun.fd"]`); tun2socks не нужен. Адреса, маршруты
 ///   IPv4 **и** IPv6 по умолчанию и DNS задаёт расширение (`XrayTunnelLayout`), поэтому трафик
@@ -234,9 +234,9 @@ enum XrayConfigurationBuilder {
     }
 }
 
-/// Выбирает генератор конфигурации туннеля для ядра текущей сборки.
+/// Конфигурация туннеля Xray для выбранного сервера: из ссылки или из JSON-подписки.
 enum TunnelConfigurationBuilder {
-    /// Конфигурация туннеля для сервера: JSON sing-box или Xray.
+    /// Конфигурация туннеля для сервера.
     ///
     /// Конфиг из JSON-подписки, сохранённый прежней версией приложения, мог не пройти
     /// `XrayConfigurationPolicy`: Lua-скрипт или поле в нескольких написаниях отклоняются уже
@@ -244,7 +244,7 @@ enum TunnelConfigurationBuilder {
     static func build(for server: ServerConfiguration, panelStore: PanelConfigurationStore = PanelConfigurationStore()) throws -> String {
         if server.panel != nil {
             // Готовый конфиг из JSON-подписки (уже адаптирован при загрузке).
-            guard VPNCore.current == .xray, let json = panelStore.configuration(for: server.id) else {
+            guard let json = panelStore.configuration(for: server.id) else {
                 throw PanelConfigurationError.missing
             }
             if let data = json.data(using: .utf8),
@@ -255,12 +255,7 @@ enum TunnelConfigurationBuilder {
             }
             return json
         }
-        switch VPNCore.current {
-        case .singBox:
-            return try VPNConfigurationBuilder.build(for: server)
-        case .xray:
-            return try XrayConfigurationBuilder.build(for: server)
-        }
+        return try XrayConfigurationBuilder.build(for: server)
     }
 }
 

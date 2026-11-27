@@ -1,10 +1,9 @@
-#if MONO_CORE_XRAY
 import Foundation
 import NetworkExtension
 import os
 import WidgetKit
 
-/// Системный VPN-туннель на ядре Xray-core (LibXray). Сборка с флагом `MONO_CORE_XRAY`.
+/// Системный VPN-туннель на ядре Xray-core (libXray).
 ///
 /// Порядок запуска:
 /// 1. Конфигурация Xray читается из общего Keychain (её пишет приложение; так туннель могут
@@ -246,4 +245,3 @@ private final class ResolveState: @unchecked Sendable {
         lock.withLock { results }
     }
 }
-#endif

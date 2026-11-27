@@ -93,7 +93,7 @@ enum WidgetVPNState: Equatable, Sendable {
     /// - Parameters:
     ///   - status: системный статус; `nil`, если конфигурация не найдена или не прочитана.
     ///   - access: результат чтения конфигурации.
-    ///   - hasConfiguration: выбран ли сервер (в Keychain есть конфигурация sing-box).
+    ///   - hasConfiguration: выбран ли сервер (в Keychain есть конфигурация туннеля).
     ///   - hasError: есть ли невыпущенная ошибка туннеля или виджета.
     static func resolve(
         status: NEVPNStatus?,

@@ -4,8 +4,8 @@ import Foundation
 /// Ошибки разбора одной прокси-ссылки. Описания показываются пользователю.
 ///
 /// Делятся на два вида (`isCoreLimitation`): ссылка испорчена — запись пропускается и попадает
-/// только в диагностику; ссылка корректна, но использует возможность, которой нет в подключённом
-/// sing-box, — сервер показывается в списке как «Не поддерживается».
+/// только в диагностику; ссылка корректна, но использует возможность, которой нет в ядре
+/// (Xray-core), — сервер показывается в списке как «Не поддерживается».
 enum ProxyLinkError: LocalizedError, Codable, Hashable, Sendable {
     /// Схема ссылки не поддерживается (в значении — сама схема).
     case unsupportedScheme(String)
@@ -25,7 +25,7 @@ enum ProxyLinkError: LocalizedError, Codable, Hashable, Sendable {
     case unsupportedSecurity(String)
     /// Неподдерживаемый транспорт.
     case unsupportedTransport(String)
-    /// Маскировка заголовков TCP (`headerType`), которую sing-box не поддерживает.
+    /// Маскировка заголовков TCP (`headerType`), которая не поддерживается.
     case unsupportedHeaderType(String)
     /// Неподдерживаемый flow (поддерживается только `xtls-rprx-vision`).
     case unsupportedFlow(String)
@@ -35,11 +35,12 @@ enum ProxyLinkError: LocalizedError, Codable, Hashable, Sendable {
     case invalidRealityPublicKey
     /// Short ID REALITY некорректен.
     case invalidRealityShortID
-    /// Шифр Shadowsocks, которого нет в sing-box.
+    /// Шифр Shadowsocks, которого нет в ядре.
     case unsupportedShadowsocksMethod(String)
-    /// Плагин Shadowsocks, которого нет в sing-box (поддерживаются `obfs-local` и `v2ray-plugin` в режиме websocket).
+    /// Плагин Shadowsocks (SIP003): в Xray-core плагинов нет.
     case unsupportedShadowsocksPlugin(String)
-    /// gRPC `authority` отличается от SNI: в sing-box (gRPC lite) `:authority` всегда равен SNI или адресу сервера.
+    /// gRPC `authority` отличается от SNI, а ядро не умеет задавать их раздельно. Xray-core умеет,
+    /// поэтому для него не возникает; значение сохранено для данных прежних версий.
     case unsupportedGRPCAuthority(String)
 
     /// Ссылка корректна, но требует возможности, которой нет в подключённом ядре.
@@ -98,7 +99,7 @@ enum ProxyLinkError: LocalizedError, Codable, Hashable, Sendable {
 
 /// Разбирает отдельные прокси-ссылки: `vless://`, `vmess://`, `trojan://`, `ss://`.
 ///
-/// Применяются только параметры, которые подключённый sing-box (1.14.4, см. `Frameworks/LIBBOX_VERSION`)
+/// Применяются только параметры, которые ядро Xray-core (v26.11.9, см. `Frameworks/LIBXRAY_VERSION`)
 /// может выполнить. Если игнорирование параметра привело бы к подключению не так, как задумал
 /// провайдер (транспорт, маскировка, authority, ...), сервер помечается неподдерживаемым
 /// (`ServerConfiguration.incompatibility`) — без подмены транспорта. Безвредные неприменённые
@@ -107,7 +108,7 @@ enum ProxyLinkParser {
     /// Схемы ссылок, которые умеет разбирать парсер.
     static let supportedSchemes: Set<String> = ["vless", "vmess", "trojan", "ss"]
 
-    /// Отпечатки uTLS, которые принимает sing-box.
+    /// Отпечатки uTLS, которые принимает парсер.
     static let supportedFingerprints: Set<String> = [
         "chrome", "firefox", "edge", "safari", "360", "qq", "ios", "android", "random", "randomized",
     ]
@@ -115,7 +116,8 @@ enum ProxyLinkParser {
     /// Методы Shadowsocks, реализованные ядром текущей сборки (AEAD и 2022).
     static var supportedShadowsocksMethods: Set<String> { VPNCore.current.shadowsocksMethods }
 
-    /// Плагины Shadowsocks (SIP003), встроенные в sing-box; ключ — имя из ссылки, значение — имя в sing-box.
+    /// Плагины Shadowsocks (SIP003) для ядра, которое их поддерживает (`VPNCore.supportsShadowsocksPlugins`);
+    /// в Xray-core их нет, поэтому сервер с плагином не поддерживается. Ключ — имя из ссылки.
     static let supportedShadowsocksPlugins: [String: String] = [
         "obfs-local": "obfs-local", "simple-obfs": "obfs-local", "v2ray-plugin": "v2ray-plugin",
     ]
@@ -312,7 +314,7 @@ enum ProxyLinkParser {
 
     /// Разбирает `ss://` в формате SIP002 и в старом формате `ss://base64(method:password@host:port)`.
     ///
-    /// Проверяет, что метод поддерживается sing-box; плагины отклоняются.
+    /// Проверяет, что метод поддерживается ядром; плагины отклоняются.
     private static func parseShadowsocks(_ link: String) throws -> ServerConfiguration {
         guard let range = link.range(of: "://") else { throw ProxyLinkError.malformed }
         var body = String(link[range.upperBound...])
@@ -369,8 +371,8 @@ enum ProxyLinkParser {
         return server
     }
 
-    /// SIP002 `plugin=name;opts`: `obfs-local`/`simple-obfs` и `v2ray-plugin` (только websocket —
-    /// режим QUIC в sing-box не реализован). Остальные плагины — ограничение ядра.
+    /// SIP002 `plugin=name;opts`. В Xray-core SIP003-плагинов нет (`VPNCore.supportsShadowsocksPlugins`),
+    /// поэтому любой плагин — ограничение ядра.
     private static func applyShadowsocksPlugin(_ plugin: String, to server: inout ServerConfiguration) throws {
         let name = plugin.components(separatedBy: ";")[0].trimmingCharacters(in: .whitespaces)
         let options = plugin.dropFirst(name.count).drop { $0 == ";" }
@@ -423,10 +425,7 @@ enum ProxyLinkParser {
     /// Применяет gRPC `authority` (Xray).
     ///
     /// Xray-core передаёт `:authority` независимо от SNI (`transport/internet/grpc/dial.go`), поэтому
-    /// для него значение сохраняется в `grpcAuthority`, если отличается от SNI. В sing-box 1.14.4
-    /// без тега `with_grpc` используется gRPC lite, который всегда отправляет `:authority` = SNI
-    /// (или адрес сервера без TLS) с портом; совпадающий authority применяется как есть,
-    /// отличающийся — ограничение ядра.
+    /// для него значение сохраняется в `grpcAuthority`, если отличается от SNI.
     private static func applyGRPCAuthority(from query: inout [String: String], to server: inout ServerConfiguration) throws {
         guard let authority = query.removeValue(forKey: "authority")?.trimmingCharacters(in: .whitespaces),
               !authority.isEmpty else { return }
@@ -559,7 +558,7 @@ enum ProxyLinkParser {
             if let spiderX, !spiderX.isEmpty, spiderX != "/" {
                 ignored.append("spx")
             }
-            // REALITY в sing-box требует uTLS; chrome совпадает со значением по умолчанию в Xray.
+            // REALITY требует отпечаток uTLS; по умолчанию chrome, как в Xray.
             return TLSSettings(
                 serverName: sni,
                 alpn: alpn,

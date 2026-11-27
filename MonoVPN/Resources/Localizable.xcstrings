@@ -238,7 +238,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "gRPC authority «%@» отличается от SNI — в sing-box их нельзя задать раздельно"
+            "value": "gRPC authority «%@» отличается от SNI — ядро не может задать их раздельно"
           }
         }
       }

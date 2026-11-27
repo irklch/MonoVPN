@@ -39,8 +39,9 @@ struct SubscriptionParseResult: Equatable {
 ///
 /// Поддерживается: список прокси-ссылок — простым текстом (по одной в строке) или в Base64
 /// (стандартном или URL-safe); именно так большинство панелей (3x-ui, Marzban,
-/// Remnawave, ...) отвечают обычным клиентам. Clash YAML и JSON sing-box / Xray
-/// распознаются и отклоняются с понятным сообщением.
+/// Remnawave, ...) отвечают обычным клиентам. Clash YAML и JSON-конфиги распознаются и
+/// отклоняются с понятным сообщением; JSON-подписка Xray загружается отдельно
+/// (`XrayJSONSubscriptionParser`, адрес `<подписка>/json`).
 enum SubscriptionParser {
     /// Декодирует байты как UTF-8 (или Latin-1) и разбирает текст.
     static func parse(_ data: Data) throws -> SubscriptionParseResult {

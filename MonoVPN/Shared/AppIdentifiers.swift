@@ -48,7 +48,7 @@ enum AppIdentifiers {
 enum SecureStorageKey: String {
     /// URL подписки, разобранные серверы и выбранный сервер (JSON, только приложение).
     case appState = "app-state.v1"
-    /// Готовая к запуску конфигурация sing-box для выбранного сервера (приложение → расширение).
+    /// Готовая к запуску конфигурация Xray для выбранного сервера (приложение → расширение).
     case tunnelConfiguration = "tunnel-configuration.v1"
     /// Последняя ошибка запуска, о которой сообщило расширение (расширение → приложение).
     case lastTunnelError = "last-tunnel-error.v1"

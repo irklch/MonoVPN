@@ -1,6 +1,6 @@
 import Foundation
 
-/// Прокси-протоколы, которые Mono VPN умеет разбирать и передавать в sing-box.
+/// Прокси-протоколы, которые Mono VPN умеет разбирать и передавать в Xray-core.
 enum ProxyProtocol: String, Codable, Hashable, Sendable, CaseIterable {
     /// VLESS (в том числе с REALITY).
     case vless
@@ -61,7 +61,7 @@ struct RealitySettings: Codable, Hashable, Sendable {
 
 /// Параметры TLS соединения с сервером.
 struct TLSSettings: Codable, Hashable, Sendable {
-    /// SNI. `nil` означает «использовать адрес сервера» (поведение sing-box по умолчанию).
+    /// SNI. `nil` означает «использовать адрес сервера».
     var serverName: String?
     /// Список протоколов ALPN; пустой — не передавать.
     var alpn: [String] = []
@@ -110,7 +110,8 @@ struct ServerConfiguration: Codable, Hashable, Identifiable, Sendable {
     var vmessSecurity: String?
     /// alterId для VMess (устаревший параметр, передаётся как есть).
     var vmessAlterID: Int?
-    /// Плагин Shadowsocks в терминах sing-box (`obfs-local`, `v2ray-plugin`); `nil` — без плагина.
+    /// Плагин Shadowsocks (`obfs-local`, `v2ray-plugin`); `nil` — без плагина. В Xray-core плагинов нет,
+    /// поле остаётся для данных прежних версий.
     var shadowsocksPlugin: String?
     /// Параметры плагина Shadowsocks (`obfs=http;obfs-host=...`).
     var shadowsocksPluginOptions: String?
@@ -130,11 +131,11 @@ struct ServerConfiguration: Codable, Hashable, Identifiable, Sendable {
     /// Сервер из JSON-подписки Xray (готовый конфиг панели); `nil` — сервер из ссылки.
     var panel: PanelServerInfo?
 
-    /// Имена безвредных параметров из ссылки, которые sing-box не поддерживает и которые
+    /// Имена безвредных параметров из ссылки, которые ядро не поддерживает и которые
     /// поэтому не применены. Показываются только в диагностике импорта (без значений).
     var ignoredParameters: [String] = []
 
-    /// Почему сервер нельзя запустить в подключённом sing-box; `nil` — сервер поддерживается.
+    /// Почему сервер нельзя запустить в Xray-core; `nil` — сервер поддерживается.
     /// Неподдерживаемый сервер показывается в списке неактивным и никогда не выбирается.
     var incompatibility: ProxyLinkError?
 

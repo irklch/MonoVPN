@@ -19,7 +19,8 @@ struct Subscription: Codable, Hashable, Sendable {
     var issues: [ParseIssue]
     /// Дата последнего успешного импорта или обновления.
     var lastUpdated: Date
-    /// Ядро, для которого разобраны серверы; `nil` — сохранено до появления выбора ядра (sing-box).
+    /// Ядро, для которого разобраны серверы; `nil` или `.singBox` — сохранено сборкой до 1.0.0
+    /// (подписка обновляется при запуске).
     var core: VPNCore? = nil
     /// Формат ответа подписки; `nil` — сохранено до появления JSON-подписок (ссылки).
     var format: Format? = nil
