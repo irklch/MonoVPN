@@ -14,6 +14,8 @@ enum Mono {
         static let tertiary = Color(white: 0.72)
         /// Заливка карточек, полей и второстепенных кнопок.
         static let fill = Color(white: 0.955)
+        /// Еле заметная заливка крупных областей (фон списка серверов на главном экране).
+        static let subtleFill = Color(white: 0.975)
         /// Разделители в списках.
         static let separator = Color(white: 0.9)
         /// Цвет содержимого поверх `primary` (текст и иконки на чёрном).

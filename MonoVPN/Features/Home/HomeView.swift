@@ -15,25 +15,29 @@ struct HomeView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Неподвижная часть: не прокручивается вместе со списком.
-            header
-            ConnectionStatusView(state: model.state, connectedDate: model.vpn.connectedDate, hasServer: model.selectedServer != nil)
-                .padding(.top, 12)
-            ConnectButton(
-                state: model.state,
-                isBusy: model.isBusy,
-                isEnabled: model.canToggleConnection
-            ) {
-                Task { await model.toggleConnection() }
+            VStack(spacing: 0) {
+                header
+                ConnectionStatusView(state: model.state, connectedDate: model.vpn.connectedDate, hasServer: model.selectedServer != nil)
+                    .padding(.top, 12)
+                ConnectButton(
+                    state: model.state,
+                    isBusy: model.isBusy,
+                    isEnabled: model.canToggleConnection
+                ) {
+                    Task { await model.toggleConnection() }
+                }
+                .padding(.top, 24)
+                caption
+                    .padding(.top, 16)
             }
-            .padding(.top, 24)
-            caption
-                .padding(.top, 16)
+            .padding(.horizontal, Mono.Metrics.screenPadding)
             // Список серверов занимает всё оставшееся место (примерно половину экрана).
+            // Он на всю ширину экрана, чтобы индикатор прокрутки был у края экрана;
+            // отступы задаёт сам список.
             serverArea
                 .padding(.top, 12)
                 .frame(maxHeight: .infinity, alignment: .bottom)
         }
-        .padding(.horizontal, Mono.Metrics.screenPadding)
         .padding(.bottom, 12)
         .background(Mono.Palette.background.ignoresSafeArea())
         .animation(Mono.Animation.state, value: model.state)
@@ -106,6 +110,7 @@ struct HomeView: View {
                 isSubscriptionPresented = true
             }
             .buttonStyle(PrimaryButtonStyle())
+            .padding(.horizontal, Mono.Metrics.screenPadding)
             .transition(.opacity)
         }
     }

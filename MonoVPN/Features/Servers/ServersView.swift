@@ -5,24 +5,40 @@ import SwiftUI
 /// Прокручивается только сам список; при появлении он прокручивается к выбранному серверу,
 /// чтобы быстро переключаться между соседними серверами. Нажатие выбирает сервер (при включённом
 /// VPN — переподключает туннель). Неподдерживаемые ядром серверы показаны неактивными.
+///
+/// Вид занимает всю ширину экрана: индикатор прокрутки у края экрана, а боковые отступы —
+/// внутренние. Строки лежат на еле заметном скруглённом фоне.
 struct ServerListView: View {
     /// Модель главного экрана: список серверов, выбор и обновление подписки.
     let model: HomeViewModel
 
+    /// Отступ строк от краёв фона списка.
+    private static let innerPadding: CGFloat = 16
+
     /// Заголовок с кнопкой обновления, ошибка подписки и прокручиваемый список.
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
-            if let error = model.subscriptionError {
-                NoticeText(systemName: "exclamationmark.circle", text: error)
-                    .padding(.bottom, 10)
+            Group {
+                header
+                if let error = model.subscriptionError {
+                    NoticeText(systemName: "exclamationmark.circle", text: error)
+                        .padding(.bottom, 10)
+                }
             }
-            Divider().overlay(Mono.Palette.separator)
-            if model.servers.isEmpty {
-                emptyState
-            } else {
-                list
+            .padding(.horizontal, Mono.Metrics.screenPadding)
+            Group {
+                if model.servers.isEmpty {
+                    emptyState
+                        .padding(.horizontal, Mono.Metrics.screenPadding + Self.innerPadding)
+                } else {
+                    list
+                }
             }
+            .background(
+                RoundedRectangle(cornerRadius: Mono.Metrics.cornerRadius, style: .continuous)
+                    .fill(Mono.Palette.subtleFill)
+                    .padding(.horizontal, Mono.Metrics.screenPadding)
+            )
         }
     }
 
@@ -72,6 +88,9 @@ struct ServerListView: View {
                         }
                     }
                 }
+                // Внутренние отступы: строки внутри фона, сам список — на всю ширину экрана.
+                .padding(.horizontal, Mono.Metrics.screenPadding + Self.innerPadding)
+                .padding(.vertical, 4)
             }
             .onAppear { scrollToSelection(proxy, animated: false) }
             // После обновления подписки порядок и состав могут измениться.
