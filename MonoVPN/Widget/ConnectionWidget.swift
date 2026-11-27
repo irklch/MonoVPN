@@ -21,6 +21,9 @@ struct ConnectionWidget: Widget {
         .configurationDisplayName(Text("widget.displayName"))
         .description(Text("widget.description"))
         .supportedFamilies([.systemSmall])
+        // Без системных отступов кнопка занимает виджет целиком: иначе тап по краю
+        // (вне кнопки) открывает приложение. Содержимое и так центрировано.
+        .contentMarginsDisabled()
     }
 }
 
