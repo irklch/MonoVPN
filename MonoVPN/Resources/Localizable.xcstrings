@@ -45,193 +45,6 @@
         }
       }
     },
-    "diagnostics.refresh.appBug": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ответ не изменился, а статусы изменились — ошибка в приложении"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.counts %lld %lld %lld %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Всего: %1$lld · поддерживается: %2$lld · не поддерживается: %3$lld · с ошибками: %4$lld"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.diff %lld %lld %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Добавлено: %1$lld · удалено: %2$lld · изменено: %3$lld"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.duplicateNames %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Повторяющихся имён серверов: %lld (при перестановке строк их статус по имени может казаться изменившимся)"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.hash %@ %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Хеш ответа: %1$@ (%2$lld байт)"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.nondeterministic %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Недетерминированный разбор ссылок: %lld"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.parameters %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Изменились параметры: %@"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.protocols %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Протоколы: %@"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.reasons %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Причины: %@"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.response.changed": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ответ провайдера изменился"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.response.first": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Первая загрузка этого источника"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.response.identical": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ответ провайдера не изменился"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.response.reordered": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ответ провайдера изменился только порядком строк"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.security %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Безопасность: %@"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.statusChange %@ %@ %@ %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@: %2$@ → %3$@ (изменились: %4$@)"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.supported": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "поддерживается"
-          }
-        }
-      }
-    },
-    "diagnostics.refresh.transports %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Транспорты: %@"
-          }
-        }
-      }
-    },
     "diagnostics.section.ignored %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -239,17 +52,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Частично применены: %lld"
-          }
-        }
-      }
-    },
-    "diagnostics.section.refreshes %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновления подписки: %lld"
           }
         }
       }
@@ -265,17 +67,6 @@
         }
       }
     },
-    "diagnostics.section.tunnel": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Packet Tunnel"
-          }
-        }
-      }
-    },
     "diagnostics.section.unsupported %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -287,17 +78,6 @@
         }
       }
     },
-    "diagnostics.section.xrayLog": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Журнал ошибок Xray (новые сверху)"
-          }
-        }
-      }
-    },
     "diagnostics.title": {
       "extractionState": "manual",
       "localizations": {
@@ -305,83 +85,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Диагностика импорта"
-          }
-        }
-      }
-    },
-    "diagnostics.tunnel.core %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ядро: %@"
-          }
-        }
-      }
-    },
-    "diagnostics.tunnel.error %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ошибка запуска: %@"
-          }
-        }
-      }
-    },
-    "diagnostics.tunnel.memory %@ %@ %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Память: %1$@ МБ, пик %2$@ МБ, до лимита iOS ещё %3$@ МБ"
-          }
-        }
-      }
-    },
-    "diagnostics.tunnel.start %@ %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запуск туннеля: %1$@ с (ядро: %2$@ с)"
-          }
-        }
-      }
-    },
-    "diagnostics.tunnel.stop %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Последняя остановка: %@"
-          }
-        }
-      }
-    },
-    "diagnostics.verboseLog": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Подробный журнал Xray"
-          }
-        }
-      }
-    },
-    "diagnostics.verboseLog.caption": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Действует со следующего подключения. В журнал попадут ошибки каждого соединения и адреса сайтов — выключите после проверки."
           }
         }
       }
@@ -535,7 +238,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "gRPC authority «%@» отличается от SNI — в sing-box их нельзя задать раздельно"
+            "value": "gRPC authority «%@» отличается от SNI — ядро не может задать их раздельно"
           }
         }
       }
@@ -925,6 +628,116 @@
         }
       }
     },
+    "legal.licenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензии"
+          }
+        }
+      }
+    },
+    "legal.privacyPolicy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Политика конфиденциальности"
+          }
+        }
+      }
+    },
+    "licenses.archive": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходный код этой версии (архив)"
+          }
+        }
+      }
+    },
+    "licenses.hideText": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть текст лицензии"
+          }
+        }
+      }
+    },
+    "licenses.intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mono VPN использует программное обеспечение с открытым исходным кодом: Xray-core и его зависимости. Компоненты не изменены. Ниже — их лицензии, уведомления об авторских правах и ссылки на исходный код использованных версий."
+          }
+        }
+      }
+    },
+    "licenses.mirror": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копия исходного кода в репозитории Mono VPN"
+          }
+        }
+      }
+    },
+    "licenses.showText": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать текст лицензии"
+          }
+        }
+      }
+    },
+    "licenses.source": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходный код"
+          }
+        }
+      }
+    },
+    "licenses.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензии"
+          }
+        }
+      }
+    },
+    "licenses.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось загрузить список лицензий."
+          }
+        }
+      }
+    },
     "privacy.accept": {
       "extractionState": "manual",
       "localizations": {
@@ -964,7 +777,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ссылка подписки и параметры серверов хранятся только на этом устройстве, в Связке ключей."
+            "value": "Ссылка подписки и параметры серверов хранятся только на этом устройстве — в Связке ключей и в защищённом файле приложения. Они не синхронизируются через iCloud и не переносятся на другие устройства."
           }
         }
       }
@@ -975,7 +788,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "После подключения весь интернет-трафик устройства передаётся через выбранный сервер и обрабатывается вашим VPN-провайдером. DNS-запросы шифруются и через этот же сервер отправляются в Cloudflare DNS (1.1.1.1)."
+            "value": "После подключения трафик устройства идёт через выбранный сервер и обрабатывается вашим VPN-провайдером; разработчик Mono VPN его не получает. Локальная сеть работает напрямую, без VPN. Готовая конфигурация провайдера может направлять часть трафика напрямую и использовать свои DNS-серверы. Иначе DNS-запросы через тот же сервер уходят в Cloudflare DNS (1.1.1.1) и Google DNS (8.8.8.8) по DNS-over-HTTPS, а при его недоступности — обычным запросом к Google DNS."
           }
         }
       }

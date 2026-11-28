@@ -4,6 +4,11 @@ import Observation
 import os
 import WidgetKit
 
+#if DEBUG
+/// Логгер категории «VPN» (только DEBUG): без адресов, ссылок и учётных данных.
+private let vpnLogger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "VPN")
+#endif
+
 /// Владеет `NETunnelProviderManager` приложения и публикует системный статус VPN.
 ///
 /// Системные операции делегируются `TunnelController`, которым пользуется и App Intent
@@ -30,8 +35,6 @@ final class VPNManager {
     @ObservationIgnored private var isOperating = false
     /// Keychain для конфигурации туннеля и последней ошибки.
     @ObservationIgnored private let storage: SecureStorage
-    /// Логгер категории «VPN».
-    @ObservationIgnored private let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "VPN")
 
     /// Создаёт менеджер и подписывается на изменения статуса и конфигурации VPN.
     init(storage: SecureStorage = SecureStorage()) {
@@ -58,7 +61,9 @@ final class VPNManager {
         do {
             manager = try await TunnelController.loadManager()
         } catch {
-            logger.error("Failed to load VPN preferences: \(error.localizedDescription, privacy: .public)")
+            #if DEBUG
+            vpnLogger.error("Failed to load VPN preferences: \(String(describing: type(of: error)), privacy: .public)")
+            #endif
         }
         isLoaded = true
         refreshStatus()
@@ -78,7 +83,7 @@ final class VPNManager {
         lastError = nil
     }
 
-    /// Запускает туннель с переданной конфигурацией sing-box.
+    /// Запускает туннель с переданной конфигурацией Xray.
     ///
     /// Если туннель уже поднят (например, из виджета), повторно не запускается;
     /// если он ещё отключается — сначала дожидается `.disconnected` (см. `TunnelController.start`).

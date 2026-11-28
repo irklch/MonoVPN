@@ -6,7 +6,7 @@ import Testing
 enum Fixture {
     /// Тестовый UUID пользователя.
     static let uuid = "11111111-2222-4333-8444-555555555555"
-    /// Пример ключа из документации sing-box.
+    /// Пример публичного ключа REALITY (не настоящий).
     static let realityKey = "jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0"
 
     /// Ссылка VLESS + REALITY + Vision.
@@ -93,7 +93,7 @@ struct ProxyLinkParserTests {
             #expect(server.tls == nil)
             #expect(server.protocolSummary == "VLESS")
             #expect(throws: ProxyLinkError.unsupportedTransport(type)) {
-                try VPNConfigurationBuilder.outbound(for: server)
+                try XrayConfigurationBuilder.outbound(for: server)
             }
         }
         let vision = try ProxyLinkParser.parse("vless://\(Fixture.uuid)@example.com:443?flow=xtls-rprx-vision")
@@ -157,21 +157,14 @@ struct ProxyLinkParserTests {
         }
     }
 
-    /// Плагины Shadowsocks, встроенные в sing-box, применяются; остальные — ограничение ядра.
+    /// В Xray-core нет SIP003-плагинов Shadowsocks: сервер с плагином — ограничение ядра.
     @Test func shadowsocksPlugins() throws {
         let base = "ss://" + Data("aes-256-gcm:pass".utf8).base64EncodedString() + "@198.51.100.7:8388"
         let obfs = try ProxyLinkParser.parse(base + "?plugin=simple-obfs%3Bobfs%3Dhttp%3Bobfs-host%3Dexample.com#O")
-        guard VPNCore.current.supportsShadowsocksPlugins else {
-            // В Xray-core нет SIP003-плагинов.
-            #expect(obfs.incompatibility == .unsupportedShadowsocksPlugin("simple-obfs"))
-            return
+        #expect(obfs.incompatibility == .unsupportedShadowsocksPlugin("simple-obfs"))
+        #expect(throws: ProxyLinkError.unsupportedShadowsocksPlugin("simple-obfs")) {
+            try XrayConfigurationBuilder.outbound(for: obfs)
         }
-        #expect(obfs.isSupported)
-        #expect(obfs.shadowsocksPlugin == "obfs-local")
-        #expect(obfs.shadowsocksPluginOptions == "obfs=http;obfs-host=example.com")
-        let outbound = try VPNConfigurationBuilder.outbound(for: obfs)
-        #expect(outbound["plugin"] as? String == "obfs-local")
-        #expect(outbound["plugin_opts"] as? String == "obfs=http;obfs-host=example.com")
 
         let quic = try ProxyLinkParser.parse(base + "?plugin=v2ray-plugin%3Bmode%3Dquic")
         #expect(!quic.isSupported)

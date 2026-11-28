@@ -10,10 +10,10 @@ struct SubscriptionView: View {
     @State private var input = ""
     /// Показан ли диалог подтверждения удаления.
     @State private var isDeleteConfirmationPresented = false
-    /// Показано ли окно диагностики импорта.
+    /// Показано ли окно с причинами недоступности серверов.
     @State private var isDiagnosticsPresented = false
-    /// Есть ли диагностика расширения Packet Tunnel (туннель хотя бы раз запускался).
-    @State private var hasTunnelDiagnostics = false
+    /// Показано ли окно лицензий сторонних компонентов.
+    @State private var isLicensesPresented = false
     /// Фокус поля ввода; снимается перед сохранением, чтобы скрыть клавиатуру.
     @FocusState private var isFieldFocused: Bool
 
@@ -80,7 +80,7 @@ struct SubscriptionView: View {
 
                 if let subscription = model.subscription {
                     let count = ImportDiagnostics.entries(for: subscription).count
-                    if count > 0 || !(model.appState.refreshReports ?? []).isEmpty || hasTunnelDiagnostics {
+                    if count > 0 {
                         Button {
                             isDiagnosticsPresented = true
                         } label: {
@@ -93,19 +93,24 @@ struct SubscriptionView: View {
                         .padding(.top, 8)
                     }
                 }
+
+                legalLinks
+                    .padding(.top, model.subscription == nil ? 8 : 0)
             }
             .padding(.horizontal, Mono.Metrics.screenPadding)
             .padding(.bottom, 32)
         }
         .scrollDismissesKeyboard(.interactively)
-        .onAppear { hasTunnelDiagnostics = TunnelDiagnosticsStore().load().startedAt != nil }
         .background(Mono.Palette.background.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
+        .sheet(isPresented: $isLicensesPresented) {
+            LicensesView()
+        }
         .sheet(isPresented: $isDiagnosticsPresented) {
             if let subscription = model.subscription {
-                ImportDiagnosticsView(subscription: subscription, reports: model.appState.refreshReports ?? [])
+                ImportDiagnosticsView(subscription: subscription)
             }
         }
         .confirmationDialog(
@@ -122,6 +127,27 @@ struct SubscriptionView: View {
             Button("common.cancel", role: .cancel) {}
         } message: {
             Text("subscription.delete.message")
+        }
+    }
+
+    /// Политика конфиденциальности и лицензии — в том же стиле, что и ссылка на диагностику импорта.
+    private var legalLinks: some View {
+        VStack(spacing: 0) {
+            Link(destination: LegalLinks.privacyPolicy) {
+                Text("legal.privacyPolicy")
+                    .font(.footnote)
+                    .foregroundStyle(Mono.Palette.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            Button {
+                isLicensesPresented = true
+            } label: {
+                Text("legal.licenses")
+                    .font(.footnote)
+                    .foregroundStyle(Mono.Palette.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.plain)
         }
     }
 

@@ -1,25 +1,20 @@
 import Foundation
 
-/// VPN-ядро, с которым собрано приложение, и его возможности.
+/// VPN-ядро и его возможности: от них зависит, какие серверы подписки помечаются
+/// «Не поддерживается».
 ///
-/// Ядро выбирается при сборке флагом `MONO_CORE_XRAY` (`Config/Identifiers.xcconfig`):
-/// в один процесс Packet Tunnel можно слинковать только одну Go-библиотеку, поэтому
-/// переключения во время работы нет. От ядра зависят формат конфигурации туннеля и то,
-/// какие серверы подписки помечаются «Не поддерживается».
+/// Приложение работает только на Xray-core (libXray). Значение сохраняется вместе с подпиской
+/// (`Subscription.core`), чтобы подписку, разобранную другим ядром, один раз обновить.
 enum VPNCore: String, Codable, Sendable {
-    /// sing-box (Libbox).
+    /// sing-box — ядро сборок до 1.0.0. Встречается только в данных, сохранённых этими сборками:
+    /// без этого значения такие подписки не декодировались бы. Такая подписка обновляется
+    /// при запуске (`HomeViewModel.start`).
     case singBox = "sing-box"
-    /// Xray-core (LibXray).
+    /// Xray-core (libXray).
     case xray = "xray"
 
-    /// Ядро текущей сборки.
-    static var current: VPNCore {
-        #if MONO_CORE_XRAY
-        return .xray
-        #else
-        return .singBox
-        #endif
-    }
+    /// Ядро приложения.
+    static let current: VPNCore = .xray
 
     /// Есть ли транспорт XHTTP (SplitHTTP).
     var supportsXHTTP: Bool { self == .xray }

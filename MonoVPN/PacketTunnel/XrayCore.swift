@@ -1,4 +1,3 @@
-#if MONO_CORE_XRAY
 import Foundation
 import LibXray
 
@@ -69,4 +68,3 @@ enum XrayCore {
         return response["data"] as? [String: Any]
     }
 }
-#endif

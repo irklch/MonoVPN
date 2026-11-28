@@ -25,37 +25,24 @@ enum XrayRuntimeConfiguration {
         return hosts
     }
 
-    /// Подставляет дескриптор TUN в `env["xray.tun.fd"]`, путь и уровень журнала и, для имён
-    /// из `resolvedAddresses`, заранее разрешённые IP вместо имён серверов.
+    /// Применяет `XrayConfigurationPolicy` (журналы выключены, Lua-скрипты запрещены),
+    /// подставляет дескриптор TUN в `env["xray.tun.fd"]` и, для имён из `resolvedAddresses`,
+    /// заранее разрешённые IP вместо имён серверов.
     ///
     /// Перед заменой адреса имя явно закрепляется там, где Xray взял бы его из адреса:
     /// SNI для TLS/REALITY, Host для WebSocket/HTTPUpgrade/XHTTP, `:authority` для gRPC без
     /// TLS. Поэтому замена на IP не меняет того, что видит сервер.
     ///
-    /// `errorLogPath` — файл журнала ошибок (`log.error`, см. `XrayErrorLog`); `nil` — не менять.
-    /// `logLevel` — уровень журнала (`info` для подробного журнала); `nil` — не менять.
+    /// Бросает `XrayConfigurationPolicy.Failure.luaScript`, если конфигурация содержит Lua-скрипт.
     static func prepare(
         _ json: String,
         tunFileDescriptor: Int32,
-        resolvedAddresses: [String: String],
-        errorLogPath: String? = nil,
-        logLevel: String? = nil
+        resolvedAddresses: [String: String]
     ) throws -> String {
-        var root = try object(json)
+        var root = try XrayConfigurationPolicy.sanitize(object(json)).root
         var env = root["env"] as? [String: Any] ?? [:]
         env[XrayTunnelLayout.tunFdEnvKey] = String(tunFileDescriptor)
         root["env"] = env
-
-        if errorLogPath != nil || logLevel != nil {
-            var log = root["log"] as? [String: Any] ?? [:]
-            if let errorLogPath {
-                log["error"] = errorLogPath
-            }
-            if let logLevel {
-                log["loglevel"] = logLevel
-            }
-            root["log"] = log
-        }
 
         if !resolvedAddresses.isEmpty, let outbounds = root["outbounds"] as? [[String: Any]] {
             root["outbounds"] = outbounds.map { replacingAddresses(in: $0, with: resolvedAddresses) }
@@ -179,7 +166,7 @@ enum XrayRuntimeConfiguration {
 
 /// Убирает из текста ошибки ядра то, что может оказаться секретом или приватным адресом:
 /// UUID, длинные токены (ключи, пароли в Base64), URL, IP-адреса. Текст показывается
-/// в приложении и сохраняется в диагностике.
+/// пользователю в приложении и виджете (через общий Keychain) и больше никуда не попадает.
 enum TunnelErrorSanitizer {
     /// Максимальная длина сохраняемого текста.
     static let maxLength = 300

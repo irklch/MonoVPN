@@ -8,8 +8,10 @@ struct AppStateStore: Sendable {
     private let storage: SecureStorage
     /// Конфиги серверов JSON-подписки (файл, не Keychain).
     private let panelStore: PanelConfigurationStore
-    /// Логгер категории «Storage»; пишет только тип ошибки, без данных.
+    #if DEBUG
+    /// Логгер категории «Storage» (только DEBUG); пишет только тип ошибки, без данных.
     private static let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "Storage")
+    #endif
 
     /// Создаёт хранилище; в тестах можно передать свой `SecureStorage`.
     init(storage: SecureStorage = SecureStorage(), panelStore: PanelConfigurationStore = PanelConfigurationStore()) {
@@ -26,8 +28,10 @@ struct AppStateStore: Sendable {
             guard let data = try storage.data(for: .appState) else { return AppState() }
             return try JSONDecoder().decode(AppState.self, from: data)
         } catch {
+            #if DEBUG
             // Никогда не логируем сами данные, только вид ошибки.
             Self.logger.error("Failed to load app state: \(String(describing: type(of: error)), privacy: .public)")
+            #endif
             return AppState()
         }
     }
@@ -42,7 +46,26 @@ struct AppStateStore: Sendable {
         try storage.set(data, for: .appState)
     }
 
-    /// Сохраняет конфигурацию sing-box, которую Packet Tunnel читает при старте.
+    /// Переписывает сохранённое состояние без полей диагностики прежних версий
+    /// (`refreshReports`, `subscription.snapshot`). Ничего не делает, если состояния нет,
+    /// этих полей в нём нет или оно не читается (повреждённое состояние не перезаписывается).
+    func removeLegacyDiagnosticFields() throws {
+        guard let data = try storage.data(for: .appState),
+              let cleaned = try Self.withoutLegacyDiagnosticFields(data) else { return }
+        try storage.set(cleaned, for: .appState)
+    }
+
+    /// Состояние без полей диагностики прежних версий; `nil`, если таких полей нет
+    /// или данные не являются JSON-объектом. Бросает ошибку, если состояние не декодируется.
+    static func withoutLegacyDiagnosticFields(_ data: Data) throws -> Data? {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
+        let subscription = object["subscription"] as? [String: Any]
+        guard object["refreshReports"] != nil || subscription?["snapshot"] != nil else { return nil }
+        let state = try JSONDecoder().decode(AppState.self, from: data)
+        return try JSONEncoder().encode(state)
+    }
+
+    /// Сохраняет конфигурацию туннеля (Xray), которую Packet Tunnel читает при старте.
     func saveTunnelConfiguration(_ json: String) throws {
         try storage.set(json, for: .tunnelConfiguration)
     }
@@ -52,12 +75,14 @@ struct AppStateStore: Sendable {
         try storage.remove(.tunnelConfiguration)
     }
 
-    /// Удаляет все данные приложения из Keychain: состояние, конфигурацию и последнюю ошибку.
+    /// Удаляет все данные подписки: конфиги JSON-подписки (файл) и из Keychain — состояние,
+    /// конфигурацию туннеля и последние ошибки туннеля и виджета.
     func removeAll() throws {
         try panelStore.removeAll()
         try storage.remove(.appState)
         try storage.remove(.tunnelConfiguration)
         try storage.remove(.lastTunnelError)
+        try storage.remove(.widgetError)
     }
 }
 

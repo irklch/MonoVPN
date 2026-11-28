@@ -12,6 +12,11 @@ struct MonoVPNApp: App {
     /// Текущая фаза сцены — нужна, чтобы заметить возврат из фона.
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Перед первым показом интерфейса удаляет данные диагностики прежних версий.
+    init() {
+        LegacyDiagnosticsCleanup.runIfNeeded()
+    }
+
     /// Единственная сцена приложения: окно с главным экраном.
     var body: some Scene {
         WindowGroup {

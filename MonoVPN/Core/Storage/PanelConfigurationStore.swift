@@ -9,7 +9,10 @@ import os
 /// запуске в фоне из виджета) и без резервного копирования. Расширение этот файл не читает:
 /// конфиг выбранного сервера приложение, как и раньше, кладёт в общий Keychain.
 struct PanelConfigurationStore: Sendable {
+    #if DEBUG
+    /// Логгер (только DEBUG): пишет только тип ошибки, без данных.
     private static let logger = Logger(subsystem: AppIdentifiers.logSubsystem, category: "Storage")
+    #endif
 
     /// Путь к файлу; `nil` — хранилище недоступно.
     let url: URL?
@@ -30,7 +33,9 @@ struct PanelConfigurationStore: Sendable {
         do {
             return try JSONDecoder().decode([String: String].self, from: data)
         } catch {
+            #if DEBUG
             Self.logger.error("Failed to read panel configurations: \(String(describing: type(of: error)), privacy: .public)")
+            #endif
             return [:]
         }
     }

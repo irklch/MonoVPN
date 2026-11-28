@@ -78,6 +78,17 @@
         }
       }
     },
+    "tunnel.error.ambiguousKeys": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфигурация сервера задаёт один и тот же параметр несколько раз в разном написании. Неясно, какое значение применит Xray, поэтому этот сервер недоступен."
+          }
+        }
+      }
+    },
     "tunnel.error.core %@": {
       "extractionState": "manual",
       "localizations": {
@@ -85,6 +96,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ошибка VPN-ядра: %@"
+          }
+        }
+      }
+    },
+    "tunnel.error.luaScript": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфигурация сервера содержит Lua-скрипт. Mono VPN не выполняет скрипты из подписок, поэтому этот сервер недоступен."
           }
         }
       }

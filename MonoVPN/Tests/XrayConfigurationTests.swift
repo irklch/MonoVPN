@@ -184,47 +184,23 @@ struct XrayConfigurationTests {
         }
     }
 
-    /// Путь журнала ошибок попадает в `log.error`, уровень и отключённый журнал доступа сохраняются.
-    @Test func runtimePreparationSetsErrorLog() throws {
-        let server = realityServer(.tcp)
-        let template = try XrayConfigurationBuilder.build(for: server)
-        let prepared = try decode(XrayRuntimeConfiguration.prepare(
-            template, tunFileDescriptor: 3, resolvedAddresses: [:], errorLogPath: "/tmp/xray-error.log"
-        ))
-        let log = try #require(prepared["log"] as? [String: Any])
-        #expect(log["error"] as? String == "/tmp/xray-error.log")
-        #expect(log["loglevel"] as? String == "warning")
-        #expect(log["access"] as? String == "none")
-    }
-
-    /// Подробный журнал меняет только уровень, путь журнала сохраняется.
-    @Test func runtimePreparationSetsVerboseLevel() throws {
+    /// Журнал Xray выключен в шаблоне и остаётся выключенным после подготовки в расширении,
+    /// даже если в сохранённой конфигурации журнал был включён (прежние версии приложения).
+    @Test func runtimePreparationDisablesLogs() throws {
         let template = try XrayConfigurationBuilder.build(for: realityServer(.tcp))
-        let prepared = try decode(XrayRuntimeConfiguration.prepare(
-            template, tunFileDescriptor: 3, resolvedAddresses: [:], errorLogPath: "/tmp/e.log", logLevel: "info"
-        ))
-        let log = try #require(prepared["log"] as? [String: Any])
-        #expect(log["loglevel"] as? String == "info")
-        #expect(log["error"] as? String == "/tmp/e.log")
-        #expect(log["access"] as? String == "none")
-    }
+        var legacy = try decode(template)
+        let templateLog = try #require(legacy["log"] as? [String: Any])
+        #expect(NSDictionary(dictionary: templateLog) == NSDictionary(dictionary: XrayConfigurationPolicy.disabledLog))
 
-    /// Строки журнала Xray: без даты и секретов, пути модулей сохраняются, новые — первыми.
-    @Test func xrayErrorLogLines() {
-        let text = """
-        partial line
-        2026/11/27 16:29:01.123456 [Warning] [1] app/dispatcher: failed to process outbound traffic > proxy/vless/outbound: failed to find an available destination > dial tcp 203.0.113.10:443: i/o timeout
-        2026/11/27 16:29:02.000001 [Warning] [2] transport/internet/reality: key \(Fixture.realityKey) for \(Fixture.uuid)
-        """
-        let lines = XrayErrorLog.lines(from: text, droppingPartialFirstLine: true)
-        #expect(lines.count == 2)
-        #expect(lines[0].hasPrefix("16:29:02 [Warning]"))
-        #expect(lines[0].contains("transport/internet/reality"))
-        #expect(!lines[0].contains(Fixture.realityKey))
-        #expect(!lines[0].contains(Fixture.uuid))
-        #expect(lines[1].contains("proxy/vless/outbound"))
-        #expect(lines[1].contains("i/o timeout"))
-        #expect(!lines[1].contains("203.0.113.10"))
+        legacy["log"] = ["error": "/tmp/xray-error.log", "loglevel": "info", "access": "/tmp/access.log", "dnsLog": true]
+        let legacyJSON = String(decoding: try JSONSerialization.data(withJSONObject: legacy), as: UTF8.self)
+        let prepared = try decode(XrayRuntimeConfiguration.prepare(legacyJSON, tunFileDescriptor: 3, resolvedAddresses: [:]))
+        let log = try #require(prepared["log"] as? [String: Any])
+        #expect(log["loglevel"] as? String == "none")
+        #expect(log["access"] as? String == "none")
+        #expect(log["error"] as? String == "none")
+        #expect(log["dnsLog"] as? Bool == false)
+        #expect((prepared["env"] as? [String: String])?["xray.tun.fd"] == "3")
     }
 
     /// Текст ошибки ядра очищается от UUID, ключей, URL и IP-адресов.

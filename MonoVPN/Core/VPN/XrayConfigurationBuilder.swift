@@ -2,7 +2,7 @@ import Foundation
 
 /// Строит JSON-конфигурацию Xray-core (v26.11.9) для одного сервера.
 ///
-/// Модель маршрутизации (та же, что у сборки с sing-box):
+/// Модель маршрутизации:
 /// - Пакеты получает встроенный TUN inbound Xray (`protocol: "tun"`) по дескриптору, который
 ///   передаёт NetworkExtension (`env["xray.tun.fd"]`); tun2socks не нужен. Адреса, маршруты
 ///   IPv4 **и** IPv6 по умолчанию и DNS задаёт расширение (`XrayTunnelLayout`), поэтому трафик
@@ -48,12 +48,8 @@ enum XrayConfigurationBuilder {
     /// Вместо дескриптора TUN стоит `XrayTunnelLayout.tunFdPlaceholder`: его заменяет расширение.
     static func build(for server: ServerConfiguration) throws -> String {
         let config: [String: Any] = [
-            "log": [
-                // Только предупреждения и без журнала доступа: посещённые адреса не пишутся.
-                "loglevel": "warning",
-                "access": "none",
-                "dnsLog": false,
-            ],
+            // Журнал Xray выключен полностью: ни журнала доступа, ни ошибок, ни DNS-запросов.
+            "log": XrayConfigurationPolicy.disabledLog,
             "env": [XrayTunnelLayout.tunFdEnvKey: XrayTunnelLayout.tunFdPlaceholder],
             "dns": [
                 "servers": remoteDNSServers,
@@ -238,23 +234,28 @@ enum XrayConfigurationBuilder {
     }
 }
 
-/// Выбирает генератор конфигурации туннеля для ядра текущей сборки.
+/// Конфигурация туннеля Xray для выбранного сервера: из ссылки или из JSON-подписки.
 enum TunnelConfigurationBuilder {
-    /// Конфигурация туннеля для сервера: JSON sing-box или Xray.
+    /// Конфигурация туннеля для сервера.
+    ///
+    /// Конфиг из JSON-подписки, сохранённый прежней версией приложения, мог не пройти
+    /// `XrayConfigurationPolicy`: Lua-скрипт или поле в нескольких написаниях отклоняются уже
+    /// здесь, с понятной ошибкой (расширение тоже проверяет конфигурацию перед запуском).
     static func build(for server: ServerConfiguration, panelStore: PanelConfigurationStore = PanelConfigurationStore()) throws -> String {
         if server.panel != nil {
             // Готовый конфиг из JSON-подписки (уже адаптирован при загрузке).
-            guard VPNCore.current == .xray, let json = panelStore.configuration(for: server.id) else {
+            guard let json = panelStore.configuration(for: server.id) else {
                 throw PanelConfigurationError.missing
+            }
+            if let data = json.data(using: .utf8),
+               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                // Только проверка: сохранённый конфиг не переписывается, расширение применит
+                // политику ещё раз перед запуском.
+                _ = try XrayConfigurationPolicy.sanitize(root)
             }
             return json
         }
-        switch VPNCore.current {
-        case .singBox:
-            return try VPNConfigurationBuilder.build(for: server)
-        case .xray:
-            return try XrayConfigurationBuilder.build(for: server)
-        }
+        return try XrayConfigurationBuilder.build(for: server)
     }
 }
 

@@ -18,7 +18,8 @@ enum XrayJSONSubscriptionParser {
         return array.contains { ($0 as? [String: Any])?["outbounds"] is [Any] }
     }
 
-    /// Разбирает ответ. Конфиг, который не удалось адаптировать, попадает в `issues`.
+    /// Разбирает ответ. Конфиг, который не удалось адаптировать или который запрещён
+    /// `XrayConfigurationPolicy` (Lua-скрипт), попадает в `issues`.
     static func parse(_ data: Data) throws -> Result {
         guard let array = (try? JSONSerialization.jsonObject(with: data)) as? [Any] else {
             throw SubscriptionParseError.unsupportedFormat("JSON")
@@ -63,6 +64,10 @@ enum XrayJSONSubscriptionParser {
                 server.ignoredParameters = adapted.droppedGeoEntries
                 servers.append(server)
                 configurations[id] = adapted.json
+            } catch let failure as XrayConfigurationPolicy.Failure {
+                // Lua-скрипт провайдера не исполняется: сервер в списке не появляется,
+                // причина видна в «Подписка → Диагностика импорта».
+                issues.append(ParseIssue(name: name, reason: failure.localizedDescription))
             } catch {
                 issues.append(ParseIssue(name: name, reason: String(localized: "error.subscription.jsonConfig")))
             }
